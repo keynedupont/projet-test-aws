@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 import jwt
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
@@ -11,6 +11,9 @@ import secrets
 import hashlib
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+
+if TYPE_CHECKING:
+    from . import models
 
 ALGORITHM = "HS256"
 
@@ -85,7 +88,7 @@ def generate_secure_token(length: int = 32) -> str:
     """Génère un token sécurisé aléatoire"""
     return secrets.token_urlsafe(length)
 
-def get_current_user(token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/login"))) -> models.User:
+def get_current_user(token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/login"))) -> "models.User":
     """Récupère l'utilisateur actuel depuis le token JWT"""
     from . import models, database
     
