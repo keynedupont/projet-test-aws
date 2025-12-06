@@ -90,8 +90,10 @@ jobs:
 
       - name: Image digest (app)
         if: github.event_name != 'pull_request'
-        run: echo 'App image: ${{ steps.meta-app.outputs.tags }}'
+        run: |
+          echo "App image: ${{ steps.meta-app.outputs.tags }}"
 
       - name: Image digest (auth)
         if: github.event_name != 'pull_request'
-        run: echo 'Auth image: ${{ steps.meta-auth.outputs.tags }}'
+        run: |
+          echo "Auth image: ${{ steps.meta-auth.outputs.tags }}"
