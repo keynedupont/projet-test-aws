@@ -1,0 +1,35 @@
+# Exemple de fichier de variables Terraform
+# Copier ce fichier en terraform.tfvars et remplir les valeurs
+
+aws_region  = "eu-north-1"
+project_name = "projet"
+environment  = "dev"
+
+# VPC
+vpc_cidr         = "10.0.0.0/16"
+availability_zones = ["eu-north-1a", "eu-north-1b"]
+
+# RDS
+rds_instance_class    = "db.t3.micro"
+rds_allocated_storage  = 20
+rds_database_name      = "my_ml_project"
+rds_username           = "app"
+rds_password           = "CHANGER_CECI" # ⚠️ Utiliser un mot de passe fort !
+
+# ElastiCache Redis
+redis_node_type = "cache.t3.micro"
+
+# ECS
+ecs_desired_count = 1
+ecs_cpu           = 512  # 0.5 vCPU
+ecs_memory        = 1024 # 1 GB
+
+# S3
+s3_ml_data_bucket_name = "projet-ml-data"
+
+# Tags communs (optionnel)
+common_tags = {
+  Owner       = "DevOps"
+  CostCenter  = "Engineering"
+}
+

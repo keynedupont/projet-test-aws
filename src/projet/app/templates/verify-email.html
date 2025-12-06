@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Vérification de l'email - Plateforme ML{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Logo -->
+        <div class="text-center">
+            <img class="mx-auto h-12 w-auto mb-6" src="{{ url_for('static', path='/images/eneky-logo-sb.png') }}" alt="eneky">
+            <h2 class="text-3xl font-bold text-text-primary">
+                Vérification de l'email
+            </h2>
+            <p class="mt-2 text-sm text-text-secondary">
+                {% if token %}
+                Cliquez sur le bouton ci-dessous pour vérifier votre adresse email
+                {% else %}
+                Token manquant. Veuillez utiliser le lien reçu par email.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Formulaire -->
+        {% if token %}
+        <form class="mt-8 space-y-6" method="post" action="/verify-email">
+            {% if error %}
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg error-message">
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            {% if success %}
+            <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg success-message">
+                {{ success }}
+            </div>
+            {% endif %}
+
+            <input type="hidden" name="token" value="{{ token }}">
+
+            <div>
+                <button type="submit" class="btn-primary w-full">
+                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Vérifier mon email
+                </button>
+            </div>
+
+            <div class="text-center">
+                <a href="/resend-verification" class="text-accent hover:text-accent-hover font-medium">
+                    Renvoyer l'email de vérification
+                </a>
+            </div>
+
+            <div class="text-center">
+                <a href="/login" class="text-accent hover:text-accent-hover font-medium">
+                    ← Retour à la connexion
+                </a>
+            </div>
+        </form>
+        {% else %}
+        <div class="mt-8 space-y-6">
+            {% if error %}
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg error-message">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <div class="text-center">
+                <a href="/resend-verification" class="text-accent hover:text-accent-hover font-medium">
+                    Renvoyer l'email de vérification
+                </a>
+            </div>
+
+            <div class="text-center">
+                <a href="/login" class="text-accent hover:text-accent-hover font-medium">
+                    ← Retour à la connexion
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

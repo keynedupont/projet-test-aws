@@ -1,0 +1,101 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    platform: linux/amd64
+    container_name: projet-db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME:-my_ml_project}
+      POSTGRES_USER: ${DB_USER:-app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-app}
+    ports:
+      - "${DB_PORT_POSTGRES:-5432}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app} -d ${DB_NAME:-my_ml_project}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    platform: linux/amd64
+    container_name: projet-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  auth:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.auth
+    platform: linux/amd64
+    container_name: projet-auth
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    # Variables d'environnement (sur-définissables par .env)
+    environment:
+      # SQLite HORS Docker (fichier monté via volume ./data -> /app/data)
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/app.db}
+      # Alternative Postgres (db interne ou externe)
+      # DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://app:app@db:5432/my_ml_project}
+      # Redis dans Docker
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    volumes:
+      - ./data:/app/data
+    command: uvicorn projet.auth.app:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.app
+    platform: linux/amd64
+    container_name: projet-app
+    depends_on:
+      auth:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Pointez l'app web vers le service auth Docker
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://auth:8000}
+    command: uvicorn projet.app.web:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  db_data:
+  redis_data:
+
+

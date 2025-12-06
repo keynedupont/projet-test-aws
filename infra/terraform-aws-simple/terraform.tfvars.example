@@ -1,0 +1,28 @@
+# Exemple de fichier de variables Terraform (version simple)
+# Copier ce fichier en terraform.tfvars et remplir les valeurs
+
+aws_region  = "eu-north-1"
+project_name = "projet"
+
+# Type d'instance EC2
+# t3.micro = 2 vCPU, 1GB RAM (éligible Free Tier - 12 premiers mois)
+# t3.small = 2 vCPU, 2GB RAM (~$15/mois) - Recommandé pour production
+# t3.medium = 2 vCPU, 4GB RAM (~$30/mois)
+instance_type = "t3.small"  # Recommandé pour production
+
+# Clé SSH (optionnel - créer dans AWS Console > EC2 > Key Pairs)
+# Si laissé vide, pas d'accès SSH (mais instance créée quand même)
+ssh_key_name = ""
+
+# IPs autorisées pour SSH (0.0.0.0/0 = tout le monde - à restreindre en production)
+allowed_cidr_blocks = ["0.0.0.0/0"]
+
+# IP Elastic (fixe) - coûte ~$3.65/mois si non utilisée
+enable_elastic_ip = false
+
+# Tags communs (optionnel)
+common_tags = {
+  Owner       = "DevOps"
+  CostCenter  = "Engineering"
+}
+

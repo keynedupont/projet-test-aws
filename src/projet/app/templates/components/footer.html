@@ -1,0 +1,30 @@
+<footer class="bg-white border-t border-gray-border">
+    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            
+            <!-- Logo + Copyright -->
+            <div class="flex items-center space-x-4">
+                <img class="h-6 w-auto" src="{{ url_for('static', path='/images/eneky-logo-sb.png') }}" alt="eneky">
+                <p class="text-sm text-text-muted">
+                    © eneky. Tous droits réservés.
+                </p>
+            </div>
+            
+            <!-- Links -->
+            <div class="flex items-center space-x-6">
+                <a href="/about" class="text-sm text-text-secondary hover:text-text-primary transition-colors">
+                    À propos
+                </a>
+                <a href="/privacy" class="text-sm text-text-secondary hover:text-text-primary transition-colors">
+                    Confidentialité
+                </a>
+                <a href="/terms" class="text-sm text-text-secondary hover:text-text-primary transition-colors">
+                    Conditions
+                </a>
+                <a href="/contact" class="text-sm text-text-secondary hover:text-text-primary transition-colors">
+                    Contact
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>

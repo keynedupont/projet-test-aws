@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration système - Administration{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-bg flex lg:gap-6">
+    <!-- Sidebar Admin -->
+    {% include "components/admin-sidebar.html" %}
+    
+    <!-- Contenu principal -->
+    <div class="flex-1" x-data="{ sidebarCollapsed: localStorage.getItem('adminSidebarCollapsed') === 'true' }">
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- En-tête -->
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-text-primary mb-2">
+                    Configuration système
+                </h1>
+                <p class="text-text-secondary">
+                    Paramètres et configuration de la plateforme
+                </p>
+            </div>
+            
+            <!-- Placeholder pour les settings -->
+            <div class="bg-white rounded-xl shadow-card p-6 border border-gray-border">
+                <p class="text-text-secondary text-center py-8">
+                    La configuration système sera disponible prochainement.
+                </p>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+

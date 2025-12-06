@@ -1,0 +1,34 @@
+<!-- Composant formulaire d'authentification minimaliste -->
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        
+        <!-- Header du formulaire -->
+        <div class="text-center">
+            <img class="mx-auto h-12 w-auto mb-6" src="{{ url_for('static', path='/images/eneky-logo.png') }}" alt="eneky">
+            <h2 class="text-3xl font-bold text-text-primary mb-2">
+                {% block form_title %}{% endblock %}
+            </h2>
+            <p class="text-text-secondary">
+                {% block form_subtitle %}{% endblock %}
+            </p>
+        </div>
+        
+        <!-- Formulaire -->
+        <div class="card">
+            <div class="card-body">
+                {% if error %}
+                <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p class="text-sm text-red-600">{{ error }}</p>
+                </div>
+                {% endif %}
+                
+                {% block form_content %}{% endblock %}
+            </div>
+        </div>
+        
+        <!-- Footer du formulaire -->
+        <div class="text-center">
+            {% block form_footer %}{% endblock %}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,171 @@
+name: Deploy to ECS
+
+# CD (Continuous Deployment) : Déploiement vers AWS ECS
+# ⚠️ PHASE 3 PRODUCTION : Ce workflow sera configuré lors de la Phase 3
+# Déclencheurs : se lance sur tags v* (releases) ou manuellement
+
+on:
+  workflow_dispatch:  # Déclenchement manuel depuis l'interface GitHub
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+  push:
+    tags:
+      - 'v*'  # Déploiement automatique sur release (ex: v1.0.0)
+
+# Variables d'environnement
+env:
+  AWS_REGION: us-east-1  # À adapter selon votre région AWS
+  ECR_REPOSITORY_APP: ${{ github.repository }}-app
+  ECR_REPOSITORY_AUTH: ${{ github.repository }}-auth
+
+# Permissions nécessaires
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  # Job 1 : Tests (validation avant déploiement)
+  tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel setuptools
+          if [ -f requirements-minimal.txt ]; then 
+            pip install -r requirements-minimal.txt
+          else 
+            pip install -r requirements.txt
+          fi
+
+      - name: Run tests
+        env:
+          PYTHONPATH: src
+        run: pytest -q
+
+  # Job 2 : Build et Push (réutilise build-and-push.yml ou fait le build ici)
+  # Option A : Dépendre du workflow build-and-push.yml (recommandé)
+  # Option B : Refaire le build ici (si besoin de contrôle séparé)
+  build-and-push:
+    name: Build and Push Docker images
+    runs-on: ubuntu-latest
+    needs: tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push app image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY_APP }}:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY_APP }}:latest \
+                       -f infra/docker/Dockerfile.app .
+          docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY_APP }}:$IMAGE_TAG
+          docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY_APP }}:latest
+
+      - name: Build, tag, and push auth image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY_AUTH }}:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY_AUTH }}:latest \
+                       -f infra/docker/Dockerfile.auth .
+          docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY_AUTH }}:$IMAGE_TAG
+          docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY_AUTH }}:latest
+
+      - name: Output image URIs
+        id: output-images
+        run: |
+          echo "APP_IMAGE=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_APP }}:${{ github.sha }}" >> $GITHUB_ENV
+          echo "AUTH_IMAGE=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_AUTH }}:${{ github.sha }}" >> $GITHUB_ENV
+
+  # Job 3 : Déploiement vers ECS (PHASE 3 - à configurer)
+  deploy-ecs:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    needs: [tests, build-and-push]
+    
+    # ⚠️ À configurer lors de la Phase 3 Production
+    # Nécessite :
+    # - Cluster ECS créé
+    # - Services ECS configurés
+    # - Secrets GitHub : ECS_CLUSTER_NAME, ECS_SERVICE_APP, ECS_SERVICE_AUTH
+    
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update ECS service (App)
+        run: |
+          echo "⚠️  PHASE 3 : À configurer avec les noms de cluster et services ECS"
+          echo "Exemple de commande (à décommenter et adapter) :"
+          echo "# aws ecs update-service \\"
+          echo "#   --cluster ${{ secrets.ECS_CLUSTER_NAME }} \\"
+          echo "#   --service ${{ secrets.ECS_SERVICE_APP }} \\"
+          echo "#   --force-new-deployment \\"
+          echo "#   --region ${{ env.AWS_REGION }}"
+          # TODO Phase 3 : Décommenter et configurer
+          # aws ecs update-service \
+          #   --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+          #   --service ${{ secrets.ECS_SERVICE_APP }} \
+          #   --force-new-deployment \
+          #   --region ${{ env.AWS_REGION }}
+
+      - name: Update ECS service (Auth)
+        run: |
+          echo "⚠️  PHASE 3 : À configurer avec les noms de cluster et services ECS"
+          # TODO Phase 3 : Décommenter et configurer
+          # aws ecs update-service \
+          #   --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+          #   --service ${{ secrets.ECS_SERVICE_AUTH }} \
+          #   --force-new-deployment \
+          #   --region ${{ env.AWS_REGION }}
+
+      - name: Wait for deployment to complete
+        run: |
+          echo "⚠️  PHASE 3 : À configurer - Attendre que le déploiement soit terminé"
+          # TODO Phase 3 : Ajouter la logique d'attente
+          # aws ecs wait services-stable \
+          #   --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+          #   --services ${{ secrets.ECS_SERVICE_APP }} ${{ secrets.ECS_SERVICE_AUTH }} \
+          #   --region ${{ env.AWS_REGION }}
+

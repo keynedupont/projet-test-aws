@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Inscription - Plateforme ML{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        
+        <!-- Header du formulaire -->
+        <div class="text-center">
+            <img class="mx-auto h-12 w-auto mb-6" src="{{ url_for('static', path='/images/eneky-logo-sb.png') }}" alt="eneky">
+            <h2 class="text-3xl font-bold text-text-primary mb-2">
+                Créer un compte
+            </h2>
+            <p class="text-text-secondary">
+                Rejoignez la plateforme ML eneky
+            </p>
+        </div>
+        
+        <!-- Formulaire -->
+        <div class="card">
+            <div class="card-body">
+                {% if error %}
+                <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-sm text-red-600">{{ error }}</p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <form method="post" class="space-y-6">
+                    <div>
+                        <label for="email" class="form-label">
+                            Adresse email
+                        </label>
+                        <input id="email" 
+                               name="email" 
+                               type="email" 
+                               required 
+                               class="form-input"
+                               placeholder="votre@email.com">
+                    </div>
+                    
+                    <div>
+                        <label for="password" class="form-label">
+                            Mot de passe
+                        </label>
+                        <input id="password" 
+                               name="password" 
+                               type="password" 
+                               required 
+                               class="form-input"
+                               placeholder="••••••••">
+                        <p class="mt-1 text-xs text-text-muted">
+                            Minimum 8 caractères avec majuscule, minuscule et chiffre
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <label for="confirm-password" class="form-label">
+                            Confirmer le mot de passe
+                        </label>
+                        <input id="confirm-password" 
+                               name="confirm-password" 
+                               type="password" 
+                               required 
+                               class="form-input"
+                               placeholder="••••••••">
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="terms" 
+                                   name="terms" 
+                                   type="checkbox" 
+                                   required
+                                   class="h-4 w-4 text-accent focus:ring-accent border-gray-border rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="terms" class="text-text-secondary">
+                                J'accepte les 
+                                <a href="/terms" class="text-accent hover:text-accent-hover font-medium">
+                                    conditions d'utilisation
+                                </a>
+                                et la 
+                                <a href="/privacy" class="text-accent hover:text-accent-hover font-medium">
+                                    politique de confidentialité
+                                </a>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full btn-primary py-3 text-base">
+                        Créer mon compte
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Footer du formulaire -->
+        <div class="text-center">
+            <p class="text-text-secondary">
+                Déjà un compte ?
+                <a href="/login" class="text-accent hover:text-accent-hover font-medium ml-1">
+                    Se connecter
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

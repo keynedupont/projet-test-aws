@@ -1,0 +1,35 @@
+# Core
+pytest
+
+# NumPy / Pandas / Scikit-learn
+numpy
+pandas
+scikit-learn
+
+# DVC (si choisi) - optionnel, lourd à installer
+
+
+# MLflow (si choisi)
+mlflow
+waitress       # serveur WSGI simple
+python-dotenv  # gestion .env
+gunicorn==21.2.0
+pyyaml
+
+# FastAPI (si choisi)
+fastapi
+uvicorn[standard]
+pydantic
+sqlalchemy
+passlib[argon2]
+PyJWT[crypto]
+email-validator
+pydantic-settings
+jinja2
+python-multipart
+httpx
+fastapi-limiter
+redis
+
+
+# Airflow (si choisi)

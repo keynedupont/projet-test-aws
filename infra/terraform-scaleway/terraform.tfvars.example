@@ -1,0 +1,49 @@
+# ============================================================================
+# FICHIER : terraform.tfvars.example
+# DESCRIPTION : Exemple de configuration Terraform pour Scaleway
+# ============================================================================
+# Copiez ce fichier vers terraform.tfvars et adaptez les valeurs
+# cp terraform.tfvars.example terraform.tfvars
+
+# Zone et région Scaleway
+scaleway_zone   = "fr-par-1"  # Paris 1 (fr-par-1, fr-par-2, fr-par-3, nl-ams-1, pl-waw-1)
+scaleway_region = "fr-par"    # Paris (fr-par, nl-ams, pl-waw)
+
+# Nom du projet
+project_name = "projet"
+
+# Type d'instance
+# DEV1-S = 2 vCPU, 4GB RAM (~10€/mois)
+# DEV1-M = 4 vCPU, 8GB RAM (~20€/mois) - Recommandé
+# DEV1-L = 8 vCPU, 16GB RAM (~40€/mois)
+instance_type = "DEV1-M"
+
+# Image système
+# ubuntu_jammy = Ubuntu 22.04 LTS
+# debian_bookworm = Debian 12
+instance_image = "ubuntu_jammy"
+
+# Clé SSH (optionnel)
+# Créez une clé SSH dans Scaleway Console > Security > SSH Keys
+# Puis copiez l'ID de la clé ici
+# ssh_key_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# IPs autorisées pour SSH
+# ["0.0.0.0/0"] = tout le monde (dangereux en production)
+# ["123.45.67.89/32"] = seulement cette IP spécifique
+allowed_cidr_blocks = ["0.0.0.0/0"]  # ⚠️ À restreindre en production !
+
+# Base de données PostgreSQL
+enable_database = true
+database_type   = "DB-DEV-S"  # DB-DEV-S = 1 vCPU, 2GB RAM (~15€/mois)
+
+# Redis
+enable_redis = true
+redis_type   = "REDIS-DEV-S"  # REDIS-DEV-S = 1 vCPU, 1GB RAM (~10€/mois)
+
+# Tags communs (optionnel)
+common_tags = {
+  Environment = "production"
+  ManagedBy   = "terraform"
+}
+

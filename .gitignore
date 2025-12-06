@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.pytest_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Data & outputs -> suivis par DVC, pas par Git (ignore les fichiers mais pas la structure des dossiers)
+data/*
+!data/**/.gitkeep
+!data/*.dvc
+models/*
+!models/**/.gitkeep
+reports/*
+!reports/**/.gitkeep
+
+
+# IDE
+.vscode/
+.idea/
+
+# Clés et fichiers sensibles
+secrets/*
+!secrets/.gitkeep
+
+# Alembic
+alembic/__pycache__/
+alembic/versions/__pycache__/

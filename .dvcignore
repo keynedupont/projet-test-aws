@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporaires
+*.tmp
+*.temp
+*.log
+*.bak
+*.cache
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Alembic (si utilisé)
+alembic/__pycache__/
+
+# Secrets (ne jamais versionner dans DVC)
+secrets/
+*.pem
+*.key
+.env
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+

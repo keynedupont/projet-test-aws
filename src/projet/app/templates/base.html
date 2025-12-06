@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full" x-data="{ darkMode: localStorage.getItem('darkMode') || 'auto' }" 
+      :class="{ 'dark': darkMode === 'dark' || (darkMode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches) }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Plateforme ML{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <link href="{{ url_for('static', path='/css/output.css') }}" rel="stylesheet">
+    
+    <!-- Alpine.js pour l'interactivité -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Script pour le dark mode -->
+    <script>
+        // Fonction pour appliquer le thème
+        function applyTheme(theme) {
+            const html = document.documentElement;
+            if (theme === 'dark') {
+                html.classList.add('dark');
+            } else if (theme === 'light') {
+                html.classList.remove('dark');
+            } else { // auto
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    html.classList.add('dark');
+                } else {
+                    html.classList.remove('dark');
+                }
+            }
+            localStorage.setItem('darkMode', theme);
+        }
+        
+        // Appliquer le thème au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('darkMode') || 'auto';
+            applyTheme(savedTheme);
+            
+            // Écouter les changements de préférence système
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+                if (localStorage.getItem('darkMode') === 'auto') {
+                    applyTheme('auto');
+                }
+            });
+        });
+    </script>
+    
+    {% block head %}{% endblock %}
+</head>
+<body class="h-full bg-gray-bg">
+    <!-- Header -->
+    {% include 'components/header.html' %}
+    
+    <!-- Main Content -->
+    <main class="min-h-screen">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    {% include 'components/footer.html' %}
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

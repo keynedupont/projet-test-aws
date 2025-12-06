@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Marianne:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Marianne', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-bg text-text-primary antialiased;
+  }
+  
+  /* Dark mode styles */
+  .dark body {
+    @apply bg-dark-bg text-dark-text-primary;
+  }
+}
+
+@layer components {
+  /* Boutons */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent-hover focus:ring-accent;
+  }
+  
+  .dark .btn-primary {
+    @apply bg-dark-accent hover:bg-dark-accent-hover focus:ring-dark-accent;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-gray-light text-text-primary border border-gray-border hover:bg-gray-50 focus:ring-gray-300;
+  }
+  
+  .dark .btn-secondary {
+    @apply bg-dark-card text-dark-text-primary border-dark-border hover:bg-gray-700 focus:ring-gray-600;
+  }
+  
+  .btn-ghost {
+    @apply btn text-text-secondary hover:text-text-primary hover:bg-gray-light focus:ring-gray-300;
+  }
+  
+  .dark .btn-ghost {
+    @apply text-dark-text-secondary hover:text-dark-text-primary hover:bg-dark-card focus:ring-gray-600;
+  }
+  
+  /* Cards */
+  .card {
+    @apply bg-white rounded-xl shadow-soft border border-gray-border;
+  }
+  
+  .dark .card {
+    @apply bg-dark-card border-dark-border;
+  }
+  
+  .card-body {
+    @apply p-6;
+  }
+  
+  /* Forms */
+  .form-input {
+    @apply block w-full px-3 py-2 text-text-primary bg-white border border-gray-border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent transition-colors duration-200;
+  }
+  
+  .dark .form-input {
+    @apply text-dark-text-primary bg-dark-card border-dark-border focus:ring-dark-accent focus:border-dark-accent;
+  }
+  
+  .form-label {
+    @apply block text-sm font-medium text-text-primary mb-2;
+  }
+  
+  .dark .form-label {
+    @apply text-dark-text-primary;
+  }
+  
+  /* Navigation */
+  .nav-link {
+    @apply text-text-secondary hover:text-text-primary px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200;
+  }
+  
+  .dark .nav-link {
+    @apply text-dark-text-secondary hover:text-dark-text-primary;
+  }
+  
+  .nav-link-active {
+    @apply nav-link text-accent bg-gray-light;
+  }
+  
+  .dark .nav-link-active {
+    @apply text-dark-accent bg-dark-card;
+  }
+  
+  /* Admin Sidebar */
+  .admin-sidebar {
+    @apply h-full;
+  }
+  
+  .admin-nav-link {
+    @apply flex items-center space-x-3 px-4 py-3 text-text-secondary hover:text-text-primary hover:bg-gray-light rounded-lg transition-colors duration-200;
+  }
+  
+  .dark .admin-nav-link {
+    @apply text-dark-text-secondary hover:text-dark-text-primary hover:bg-dark-card;
+  }
+  
+  .admin-nav-link-active {
+    @apply admin-nav-link text-accent bg-gray-light;
+  }
+  
+  .dark .admin-nav-link-active {
+    @apply text-dark-accent bg-dark-card;
+  }
+  
+  /* Layout avec sidebar */
+  .admin-layout {
+    @apply flex min-h-screen;
+  }
+  
+  .admin-content {
+    @apply flex-1 lg:ml-64;
+  }
+}

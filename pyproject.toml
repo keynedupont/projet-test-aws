@@ -1,0 +1,60 @@
+[project]
+name = "projet"
+version = "0.1.0"
+description = "Projet ML scaffold (data → features → train → evaluate → serve)"
+requires-python = ">=3"
+readme = "README.md"
+authors = [{ name = "Keyne Dupont", email = "keynedupont@gmail.com" }]
+
+# Dépendances de base (ML core)
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scikit-learn>=1.3",
+    "alembic>=1.12",
+]
+
+[project.optional-dependencies]
+fastapi = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.23",
+    "pydantic>=2",
+    "pydantic-settings>=2",
+    "sqlalchemy>=2",
+    "passlib[argon2]",
+    "PyJWT[crypto]",
+    "email-validator",
+    "jinja2",
+    "python-multipart",
+    "httpx",
+    "fastapi-limiter>=0.1.5",
+    "redis>=4.5.0",
+
+]
+mlflow = [
+    "mlflow>=2.12",
+    "waitress",
+    "python-dotenv",
+    "gunicorn==21.2.0",
+    "pyyaml",
+]
+airflow = [
+    "apache-airflow==2.10.2",
+]
+dvc = [
+    "dvc[all]",
+]
+
+dev = [
+    "pytest>=7",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
