@@ -128,10 +128,20 @@ ssh -i "$SSH_KEY" "$SSH_USER@$SSH_HOST" << EOF
         cp .env.example .env 2>/dev/null || echo "⚠️  .env.example non trouvé, créez .env manuellement"
     fi
     
-    # Corriger AUTH_SERVICE_URL pour Docker (si présent)
+    # Corriger les URLs pour Docker (si présentes)
     if grep -q "AUTH_SERVICE_URL=http://127.0.0.1" .env 2>/dev/null; then
         echo "🔧 Correction de AUTH_SERVICE_URL pour Docker..."
         sed -i 's|AUTH_SERVICE_URL=http://127.0.0.1:8000|AUTH_SERVICE_URL=http://auth:8000|' .env
+    fi
+    
+    if grep -q "REDIS_URL=redis://localhost" .env 2>/dev/null; then
+        echo "🔧 Correction de REDIS_URL pour Docker..."
+        sed -i 's|REDIS_URL=redis://localhost:6379|REDIS_URL=redis://redis:6379|' .env
+    fi
+    
+    if grep -q "DATABASE_URL=sqlite:///./data/external" .env 2>/dev/null; then
+        echo "🔧 Correction de DATABASE_URL pour Docker..."
+        sed -i 's|DATABASE_URL=sqlite:///./data/external/app.db|DATABASE_URL=sqlite:////app/data/app.db|' .env
     fi
     
     # Exporter les variables
@@ -143,6 +153,16 @@ ssh -i "$SSH_KEY" "$SSH_USER@$SSH_HOST" << EOF
     # Pull et déploiement
     docker-compose -f docker-compose.prod.yml pull
     docker-compose -f docker-compose.prod.yml up -d
+    
+    # Attendre que les services soient prêts
+    echo "⏳ Attente du démarrage des services..."
+    sleep 5
+    
+    # Créer les tables de la base de données si nécessaire (SQLite)
+    if echo "\$DATABASE_URL" | grep -q "sqlite" 2>/dev/null; then
+        echo "📊 Création des tables de la base de données..."
+        docker-compose -f docker-compose.prod.yml exec -T auth python3 -c "from projet.auth.database import Base, engine; Base.metadata.create_all(bind=engine); print('✅ Tables créées')" 2>/dev/null || echo "⚠️  Impossible de créer les tables (peut-être déjà créées)"
+    fi
     
     # Statut
     docker-compose -f docker-compose.prod.yml ps
