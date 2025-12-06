@@ -27,6 +27,8 @@ SSH_USER="${SSH_USER:-ec2-user}"
 SSH_KEY="${SSH_KEY:-~/.ssh/aws-key.pem}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/projet}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
+GITHUB_USERNAME="${GITHUB_USERNAME:-}"
+GITHUB_REPO="${GITHUB_REPO:-}"
 
 # Fonction d'aide
 show_help() {
@@ -126,16 +128,24 @@ ssh -i "$SSH_KEY" "$SSH_USER@$SSH_HOST" << EOF
         cp .env.example .env 2>/dev/null || echo "⚠️  .env.example non trouvé, créez .env manuellement"
     fi
     
+    # Corriger AUTH_SERVICE_URL pour Docker (si présent)
+    if grep -q "AUTH_SERVICE_URL=http://127.0.0.1" .env 2>/dev/null; then
+        echo "🔧 Correction de AUTH_SERVICE_URL pour Docker..."
+        sed -i 's|AUTH_SERVICE_URL=http://127.0.0.1:8000|AUTH_SERVICE_URL=http://auth:8000|' .env
+    fi
+    
     # Exporter les variables
-    export IMAGE_TAG=$IMAGE_TAG
+    export IMAGE_TAG="$IMAGE_TAG"
+    export GITHUB_USERNAME="$GITHUB_USERNAME"
+    export GITHUB_REPO="$GITHUB_REPO"
     source .env 2>/dev/null || true
     
     # Pull et déploiement
-    docker compose -f docker-compose.prod.yml pull
-    docker compose -f docker-compose.prod.yml up -d
+    docker-compose -f docker-compose.prod.yml pull
+    docker-compose -f docker-compose.prod.yml up -d
     
     # Statut
-    docker compose -f docker-compose.prod.yml ps
+    docker-compose -f docker-compose.prod.yml ps
 EOF
 
 echo -e "${GREEN}✅ Déploiement terminé !${NC}"
