@@ -6,16 +6,10 @@ FROM node:20-alpine AS builder
 WORKDIR /build
 
 # Copier les fichiers nécessaires pour npm install
-COPY package.json ./
-COPY package-lock.json* ./
+COPY package.json package-lock.json* ./
 
 # Installer les dépendances Node.js (Tailwind CSS)
-# Utilise npm ci si package-lock.json existe, sinon npm install
-RUN if [ -f package-lock.json ]; then \
-        npm ci --only=production; \
-    else \
-        npm install --only=production; \
-    fi
+RUN npm install
 
 # Copier la configuration Tailwind
 COPY tailwind.config.js ./
