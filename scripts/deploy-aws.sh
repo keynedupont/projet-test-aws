@@ -158,19 +158,9 @@ ssh -i "$SSH_KEY" "$SSH_USER@$SSH_HOST" << EOF
     echo "⏳ Attente du démarrage des services..."
     sleep 5
     
-    # Créer les tables de la base de données si nécessaire (SQLite)
-    if echo "\$DATABASE_URL" | grep -q "sqlite" 2>/dev/null; then
-        echo "📊 Création des tables de la base de données..."
-        docker-compose -f docker-compose.prod.yml exec -T auth python3 -c "
-from projet.auth.database import Base, engine
-from projet.auth import models
-Base.metadata.create_all(bind=engine)
-from sqlalchemy import inspect
-inspector = inspect(engine)
-tables = inspector.get_table_names()
-print(f'✅ Tables créées: {tables}')
-" 2>&1 || echo "⚠️  Impossible de créer les tables"
-    fi
+    # Appliquer les migrations Alembic (meilleure pratique que create_all)
+    echo "📊 Application des migrations de base de données..."
+    docker-compose -f docker-compose.prod.yml exec -T auth bash -lc "PYTHONPATH=/app/src alembic upgrade head" 2>&1 || echo "⚠️  Impossible d'appliquer les migrations (peut-être déjà appliquées)"
     
     # Statut
     docker-compose -f docker-compose.prod.yml ps
