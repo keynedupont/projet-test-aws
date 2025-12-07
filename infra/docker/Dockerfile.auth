@@ -14,6 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copier le code source
 COPY src ./src
 
+# Copier Alembic pour les migrations (doit exister si db_engine != "none")
+COPY alembic.ini ./
+COPY alembic ./alembic
+
 # Configuration
 ENV PYTHONPATH=/app/src
 
