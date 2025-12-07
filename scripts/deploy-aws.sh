@@ -161,7 +161,15 @@ ssh -i "$SSH_KEY" "$SSH_USER@$SSH_HOST" << EOF
     # Créer les tables de la base de données si nécessaire (SQLite)
     if echo "\$DATABASE_URL" | grep -q "sqlite" 2>/dev/null; then
         echo "📊 Création des tables de la base de données..."
-        docker-compose -f docker-compose.prod.yml exec -T auth python3 -c "from projet.auth.database import Base, engine; Base.metadata.create_all(bind=engine); print('✅ Tables créées')" 2>/dev/null || echo "⚠️  Impossible de créer les tables (peut-être déjà créées)"
+        docker-compose -f docker-compose.prod.yml exec -T auth python3 -c "
+from projet.auth.database import Base, engine
+from projet.auth import models
+Base.metadata.create_all(bind=engine)
+from sqlalchemy import inspect
+inspector = inspect(engine)
+tables = inspector.get_table_names()
+print(f'✅ Tables créées: {tables}')
+" 2>&1 || echo "⚠️  Impossible de créer les tables"
     fi
     
     # Statut
