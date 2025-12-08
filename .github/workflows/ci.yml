@@ -47,7 +47,7 @@ jobs:
         env:
           PYTHONPATH: src
           SECRET_KEY: test-secret-key-for-ci-minimum-32-characters-long
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
         run: |
           pytest -q
 
