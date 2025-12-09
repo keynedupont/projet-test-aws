@@ -6,7 +6,9 @@ from projet.auth import database
 
 def _override_db(db_session):
     """Injecte la session de test dans l'app FastAPI."""
-    app.dependency_overrides[database.get_db] = lambda: db_session
+    def get_db_override():
+        yield db_session
+    app.dependency_overrides[database.get_db] = get_db_override
 
 
 def test_register_then_login(db_session):
