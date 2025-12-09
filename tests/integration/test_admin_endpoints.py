@@ -4,10 +4,6 @@ from fastapi.testclient import TestClient
 from projet.auth.app import app
 from projet.auth import database, models, security
 
-# TODO: Les endpoints admin API (/auth/admin/*) ne sont pas encore implémentés
-# Ils seront ajoutés dans une future version
-pytestmark = pytest.mark.skip(reason="Endpoints admin API non implémentés - à venir")
-
 
 def _override_db(db_session):
     """Injecte la session de test dans l'app FastAPI."""
