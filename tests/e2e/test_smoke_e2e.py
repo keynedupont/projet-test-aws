@@ -42,10 +42,14 @@ def test_e2e_api_register_login_me(db_session):
     auth_app.dependency_overrides.clear()
 
 
-@pytest.mark.usefixtures("db_session")
-def test_e2e_web_signup_login_dashboard_logout():
+def test_e2e_web_signup_login_dashboard_logout(db_session):
     # Import local pour éviter les effets de bord pendant la collecte
     from projet.app.web import app as web_app
+    from projet.auth.app import app as auth_app
+    from projet.auth import database
+    
+    # Override la DB dans auth_app car web_app fait des appels HTTP vers auth_app
+    auth_app.dependency_overrides[database.get_db] = lambda: db_session
 
     with TestClient(web_app) as client:
         # Signup
@@ -80,5 +84,7 @@ def test_e2e_web_signup_login_dashboard_logout():
         # Dashboard doit rediriger si non authentifié
         r = client.get("/dashboard", follow_redirects=False)
         assert r.status_code in (302, 303)
+    
+    auth_app.dependency_overrides.clear()
 
 

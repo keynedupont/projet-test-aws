@@ -19,8 +19,12 @@ def auth_client(db_session):
 
 
 @pytest.fixture
-def web_client():
-    return TestClient(web_app)
+def web_client(db_session):
+    """Client de test pour l'app web avec DB override dans auth_app."""
+    # Override la DB dans auth_app car web_app fait des appels HTTP vers auth_app
+    auth_app.dependency_overrides[database.get_db] = lambda: db_session
+    yield TestClient(web_app)
+    auth_app.dependency_overrides.clear()
 
 
 
