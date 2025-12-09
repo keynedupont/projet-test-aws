@@ -4,15 +4,18 @@ import httpx
 from fastapi.testclient import TestClient
 
 from projet.auth.app import app as auth_app
+from projet.auth import database
 
 from projet.app.web import app as web_app
 
 
 
 @pytest.fixture
-def auth_client():
-    return TestClient(auth_app)
-
+def auth_client(db_session):
+    """Client de test pour l'API auth avec DB override."""
+    auth_app.dependency_overrides[database.get_db] = lambda: db_session
+    yield TestClient(auth_app)
+    auth_app.dependency_overrides.clear()
 
 
 @pytest.fixture

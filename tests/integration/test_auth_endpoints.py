@@ -1,9 +1,16 @@
 import pytest
 from fastapi.testclient import TestClient
 from projet.auth.app import app
+from projet.auth import database
+
+
+def _override_db(db_session):
+    """Injecte la session de test dans l'app FastAPI."""
+    app.dependency_overrides[database.get_db] = lambda: db_session
 
 
 def test_register_then_login(db_session):
+    _override_db(db_session)
     # Register
     with TestClient(app) as client:
         r = client.post("/auth/register", json={
@@ -20,9 +27,11 @@ def test_register_then_login(db_session):
         body = r2.json()
         assert "access_token" in body and body["access_token"]
         assert body.get("token_type") == "bearer"
+    app.dependency_overrides.clear()
 
 
 def test_register_duplicate_email_returns_400(db_session):
+    _override_db(db_session)
     with TestClient(app) as client:
         # First registration
         r1 = client.post("/auth/register", json={
@@ -40,9 +49,11 @@ def test_register_duplicate_email_returns_400(db_session):
             "last_name": None,
         })
         assert r2.status_code == 400
+    app.dependency_overrides.clear()
 
 
 def test_login_wrong_password_returns_401(db_session):
+    _override_db(db_session)
     with TestClient(app) as client:
         # Register
         r = client.post("/auth/register", json={
@@ -55,9 +66,11 @@ def test_login_wrong_password_returns_401(db_session):
         # Try login with wrong password
         r2 = client.post("/auth/login", data={"username": "wrongpwd@test.com", "password": "Wrong123!"})
         assert r2.status_code == 401
+    app.dependency_overrides.clear()
 
 
 def test_me_with_and_without_token(db_session):
+    _override_db(db_session)
     with TestClient(app) as client:
         # Register and login to get token
         r = client.post("/auth/register", json={
@@ -80,3 +93,4 @@ def test_me_with_and_without_token(db_session):
         withauth = client.get("/auth/me", headers=headers)
         assert withauth.status_code == 200
         assert withauth.json().get("email") == "me@test.com"
+    app.dependency_overrides.clear()

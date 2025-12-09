@@ -5,6 +5,10 @@ from fastapi.testclient import TestClient
 def test_e2e_api_register_login_me(db_session):
     # Import local pour éviter les effets de bord pendant la collecte
     from projet.auth.app import app as auth_app
+    from projet.auth import database
+    
+    # Override la dépendance DB
+    auth_app.dependency_overrides[database.get_db] = lambda: db_session
 
     with TestClient(auth_app) as client:
         # Register
@@ -34,6 +38,8 @@ def test_e2e_api_register_login_me(db_session):
         r = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 200
         assert r.json().get("email") == "e2e_api@example.com"
+    
+    auth_app.dependency_overrides.clear()
 
 
 @pytest.mark.usefixtures("db_session")
