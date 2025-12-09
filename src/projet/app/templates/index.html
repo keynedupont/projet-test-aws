@@ -5,15 +5,12 @@
 {% block content %}
 <div class="min-h-screen">
     <!-- Hero Section -->
-    <section class="bg-white py-20">
+    <section class="bg-gray-light py-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center">
-                <img class="mx-auto h-16 w-auto mb-8" src="{{ url_for('static', path='/images/umagus-logo-sb.png') }}" alt="UMAGUS">
+                <img class="mx-auto h-48 w-auto mb-8" src="{{ url_for('static', path='/images/umagus-logo-sb.png') }}" alt="UMAGUS">
                 
-                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-text-primary mb-6">
-                    Plateforme ML
-                    <span class="text-accent">Plateforme ML</span>
-                </h1>
+                
                 
                 <p class="text-xl text-text-secondary max-w-3xl mx-auto mb-10">
                     Une plateforme complète pour vos projets de Machine Learning. 
@@ -21,19 +18,17 @@
                 </p>
                 
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                    <a href="/signup" class="btn-primary px-8 py-4 text-lg">
+                    <a href="/signup" class="btn-secondary px-6 py-4 text-lg">
                         Commencer gratuitement
                     </a>
-                    <a href="/login" class="btn-secondary px-8 py-4 text-lg">
-                        Se connecter
-                    </a>
+
                 </div>
             </div>
         </div>
     </section>
     
     <!-- Features Section -->
-    <section class="py-20 bg-gray-light">
+    <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
                 <h2 class="text-3xl font-bold text-text-primary mb-4">
@@ -100,7 +95,7 @@
     </section>
     
     <!-- CTA Section -->
-    <section class="py-20 bg-white">
+    <section class="py-20 bg-gray-light">
         <div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
             <h2 class="text-3xl font-bold text-text-primary mb-4">
                 Prêt à commencer ?
