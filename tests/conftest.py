@@ -17,6 +17,7 @@ from projet.auth.database import Base, engine
 @pytest.fixture(scope="function")
 def db_session():
     """Fixture pour créer une session DB propre pour chaque test."""
+    # Créer les tables AVANT de créer la session
     Base.metadata.create_all(bind=engine)
     from projet.auth.database import SessionLocal
     db = SessionLocal()

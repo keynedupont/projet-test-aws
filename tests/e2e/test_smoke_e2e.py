@@ -10,7 +10,8 @@ def test_e2e_api_register_login_me(db_session):
     # Override la dépendance DB (get_db est un générateur, donc on doit retourner un générateur)
     def get_db_override():
         yield db_session
-    auth_app.dependency_overrides[database.get_db] = get_db_override
+    from projet.auth.database import get_db as original_get_db
+    auth_app.dependency_overrides[original_get_db] = get_db_override
 
     with TestClient(auth_app) as client:
         # Register
@@ -53,7 +54,8 @@ def test_e2e_web_signup_login_dashboard_logout(db_session):
     # Override la DB dans auth_app car web_app fait des appels HTTP vers auth_app
     def get_db_override():
         yield db_session
-    auth_app.dependency_overrides[database.get_db] = get_db_override
+    from projet.auth.database import get_db as original_get_db
+    auth_app.dependency_overrides[original_get_db] = get_db_override
 
     with TestClient(web_app) as client:
         # Signup

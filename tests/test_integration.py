@@ -15,7 +15,8 @@ def auth_client(db_session):
     """Client de test pour l'API auth avec DB override."""
     def get_db_override():
         yield db_session
-    auth_app.dependency_overrides[database.get_db] = get_db_override
+    from projet.auth.database import get_db as original_get_db
+    auth_app.dependency_overrides[original_get_db] = get_db_override
     yield TestClient(auth_app)
     auth_app.dependency_overrides.clear()
 
@@ -26,7 +27,8 @@ def web_client(db_session):
     # Override la DB dans auth_app car web_app fait des appels HTTP vers auth_app
     def get_db_override():
         yield db_session
-    auth_app.dependency_overrides[database.get_db] = get_db_override
+    from projet.auth.database import get_db as original_get_db
+    auth_app.dependency_overrides[original_get_db] = get_db_override
     yield TestClient(web_app)
     auth_app.dependency_overrides.clear()
 

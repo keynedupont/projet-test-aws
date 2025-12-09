@@ -8,7 +8,9 @@ def _override_db(db_session):
     """Injecte la session de test dans l'app FastAPI."""
     def get_db_override():
         yield db_session
-    app.dependency_overrides[database.get_db] = get_db_override
+    # Vérifier que get_db est bien la même référence
+    from projet.auth.database import get_db as original_get_db
+    app.dependency_overrides[original_get_db] = get_db_override
 
 
 def test_register_then_login(db_session):
