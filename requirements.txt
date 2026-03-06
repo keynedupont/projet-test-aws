@@ -28,7 +28,7 @@ pydantic-settings
 jinja2
 python-multipart
 httpx
-fastapi-limiter
+fastapi-limiter==0.1.5
 redis
 
 
