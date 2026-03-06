@@ -28,7 +28,7 @@ python-multipart
 httpx
 
 # Rate limiting
-fastapi-limiter>=0.1.5
+fastapi-limiter==0.1.5
 redis>=4.5.0
 
 # Tests
