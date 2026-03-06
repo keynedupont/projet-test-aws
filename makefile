@@ -97,6 +97,12 @@ db-revision:  ## nouvelle migration (usage: make db-revision message="init")
 db-upgrade:   ## applique les migrations
 	. .venv/bin/activate && PYTHONPATH=src alembic upgrade head
 
+create-admin:  ## crée un utilisateur admin (ADMIN_EMAIL=... ADMIN_PASSWORD=...)
+	. .venv/bin/activate && PYTHONPATH=src python scripts/create_admin.py --email $(ADMIN_EMAIL) --password $(ADMIN_PASSWORD)
+
+reset-admin:   ## réinitialise le mot de passe d'un utilisateur (ADMIN_EMAIL=... ADMIN_PASSWORD=...)
+	. .venv/bin/activate && PYTHONPATH=src python scripts/reset_admin_password.py --email $(ADMIN_EMAIL) --password $(ADMIN_PASSWORD)
+
 .PHONY: compose-up compose-down
 
 compose-up:   ## démarre Postgres + auth + app

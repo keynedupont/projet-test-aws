@@ -1,23 +1,30 @@
-<header class="bg-white border-b border-gray-border" x-data="{ mobileMenuOpen: false, userMenuOpen: false }">
+<header class="border-b border-gray-border bg-gray-light" x-data="{ mobileMenuOpen: false, userMenuOpen: false }">
+    {# Déterminer si on est sur la landing et si l'utilisateur est authentifié #}
+    {% set is_landing = request.url.path == '/' %}
+    {% set header_is_authenticated = (is_authenticated if is_authenticated is defined else (user is defined and user)) %}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
             
             <!-- Logo + Navigation principale -->
             <div class="flex items-center space-x-8">
-                <!-- Logo Umagus -->
+                <!-- Logo Umagus (masqué sur la landing non connecté) -->
                 <div class="flex-shrink-0">
+                    {% if not (is_landing and not header_is_authenticated) %}
                     <a href="/" class="flex items-center">
                         <img class="h-8 w-auto" src="{{ url_for('static', path='/images/umagus-logo-sb.png') }}" alt="UMAGUS">
                     </a>
+                    {% endif %}
                 </div>
                 
                 <!-- Navigation desktop -->
+                {% if not (is_landing and not header_is_authenticated) %}
                 <nav class="hidden md:flex space-x-1">
                     <a href="/" class="nav-link">Accueil</a>
                     <a href="/dashboard" class="nav-link">Dashboard</a>
                     <a href="/models" class="nav-link">Modèles</a>
                     <a href="/data" class="nav-link">Données</a>
                 </nav>
+                {% endif %}
             </div>
             
             <!-- Actions utilisateur -->
@@ -119,12 +126,14 @@
              x-transition:leave-start="transform opacity-100 scale-100"
              x-transition:leave-end="transform opacity-0 scale-95"
              class="md:hidden border-t border-gray-border bg-white">
+            {% if not (is_landing and not header_is_authenticated) %}
             <div class="px-2 pt-2 pb-3 space-y-1">
                 <a href="/" class="nav-link block">Accueil</a>
                 <a href="/dashboard" class="nav-link block">Dashboard</a>
                 <a href="/models" class="nav-link block">Modèles</a>
                 <a href="/data" class="nav-link block">Données</a>
             </div>
+            {% endif %}
         </div>
     </div>
 </header>

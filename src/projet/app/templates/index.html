@@ -3,12 +3,12 @@
 {% block title %}Plateforme ML{% endblock %}
 
 {% block content %}
+
 <div class="min-h-screen">
-    <!-- Hero Section -->
-    <section class="bg-gray-light py-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center">
-                <img class="mx-auto h-24 w-auto mb-8" src="{{ url_for('static', path='/images/umagus-logo-sb.png') }}" alt="UMAGUS">
+    <!-- Hero Section : toute la hauteur visible moins le footer, contenu centré -->
+    <section class="bg-gray-light px-4 sm:px-6 lg:px-8 " style="min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <div class="max-w-7xl mx-auto w-full text-center" style="transform: translateY(-5vh);">
+                <img class="mx-auto mb-8 " style="height: 4.2rem; width: auto;" src="{{ url_for('static', path='/images/umagus-logo-sb.png') }}" alt="UMAGUS">
                                 
                 <p class="text-xl text-text-secondary max-w-3xl mx-auto mb-10">
                     futurization platform
@@ -18,13 +18,11 @@
                     <a href="/signup" class="btn-secondary px-6 py-4 text-lg">
                         Commencer gratuitement
                     </a>
-
                 </div>
-            </div>
         </div>
     </section>
-    
-    <!-- Features Section (commented out for now)
+ <!--
+    Features Section (commented out for now)
     <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
@@ -37,7 +35,7 @@
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Feature 1 -->
+                 Feature 1 
                 <div class="card">
                     <div class="card-body text-center">
                         <div class="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -54,7 +52,7 @@
                     </div>
                 </div>
                 
-                <!-- Feature 2 -->
+                 Feature 2 
                 <div class="card">
                     <div class="card-body text-center">
                         <div class="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -71,7 +69,7 @@
                     </div>
                 </div>
                 
-                <!-- Feature 3 -->
+                 Feature 3 
                 <div class="card">
                     <div class="card-body text-center">
                         <div class="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -90,9 +88,8 @@
             </div>
         </div>
     </section>
-    -->
-    
-    <!-- CTA Section (commented out for now)
+
+     CTA Section (commented out for now)
     <section class="py-20 bg-gray-light">
         <div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
             <h2 class="text-3xl font-bold text-text-primary mb-4">

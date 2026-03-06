@@ -46,7 +46,16 @@ def get_token_from_cookie(request: Request) -> str | None:
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "project_name": "projet"})
+    # Utilisé côté header pour n'afficher que Connexion / S'inscrire
+    is_authenticated = get_token_from_cookie(request) is not None
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "project_name": "projet",
+            "is_authenticated": is_authenticated,
+        },
+    )
 
 
 @app.get("/signup", response_class=HTMLResponse)
