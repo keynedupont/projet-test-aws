@@ -108,14 +108,20 @@ def render_template(name: str, context: dict, **kwargs):
     if request is None:
         raise ValueError("Template context must include 'request'")
 
-    # Starlette signature differs by version:
-    # - TemplateResponse(name=..., request=..., context=...)
-    # - TemplateResponse(name=..., context=...)
-    # Keep both for cross-environment compatibility.
+    # Starlette signature differs by version.
+    # Try modern keyword signature first, then legacy positional forms.
     try:
         return templates.TemplateResponse(name=name, request=request, context=context, **kwargs)
     except TypeError:
+        pass
+
+    try:
         return templates.TemplateResponse(name=name, context=context, **kwargs)
+    except TypeError:
+        pass
+
+    # Legacy: TemplateResponse(name, request, context, ...)
+    return templates.TemplateResponse(name, request, context, **kwargs)
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
