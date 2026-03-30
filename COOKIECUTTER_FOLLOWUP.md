@@ -98,3 +98,19 @@ Pour qu’un outil ou un assistant puisse backporter **sans tout balayer**, chaq
   - Ajouter un bloc en haut du dropdown (avant les liens) affichant “Connecté en tant que” + `{{ user.email }}`.
   - Ajuster la largeur du dropdown (`w-56`) et gérer l’email long (`break-all`).
 - **Statut** : À backporter
+
+### [Bug] Rendu templates SSR: compatibilité `TemplateResponse` (2026-03-30)
+
+- **Généralisable ?** Oui
+- **Fichiers modifiés (ce projet)** :
+  - `src/projet/app/web.py`
+  - `src/projet/app/templates/components/header.html`
+- **Correspondance cookiecutter** :
+  - `{{cookiecutter.project_name}}/src/{{cookiecutter.package_name}}/app/web.py`
+  - `{{cookiecutter.project_name}}/src/{{cookiecutter.package_name}}/app/templates/components/header.html`
+- **Résumé** : En production, certaines routes SSR levaient `TypeError: unhashable type: 'dict'` pendant le rendu Jinja. Cause: appels `templates.TemplateResponse(...)` en arguments positionnels, fragiles selon versions Starlette/Jinja. Correction: centraliser le rendu via un helper avec arguments nommés (`name=...`, `context=...`) et remplacer les appels dans les routes web.
+- **Détails** :
+  - **web.py** : ajouter `render_template(name, context, **kwargs)` qui appelle `templates.TemplateResponse(name=name, context=context, **kwargs)`.
+  - **web.py** : remplacer les appels directs `templates.TemplateResponse("...", {...})` par `render_template("...", {...})`.
+  - **header.html** : correction UX/texte liée à la même livraison (`Gérer les organisations` avec accent).
+- **Statut** : À backporter
