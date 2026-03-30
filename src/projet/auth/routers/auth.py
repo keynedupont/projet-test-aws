@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Header
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
@@ -10,6 +10,40 @@ from ..database import get_db
 from ...settings import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def ensure_personal_organization(db: Session, user: models.User) -> models.Organization:
+    """Crée (si besoin) l'organisation perso d'un utilisateur."""
+    existing = (
+        db.query(models.Organization)
+        .join(models.OrganizationUser, models.OrganizationUser.organization_id == models.Organization.id)
+        .filter(
+            models.OrganizationUser.user_id == user.id,
+            models.Organization.org_type == "personal",
+        )
+        .first()
+    )
+    if existing:
+        return existing
+
+    org = models.Organization(
+        name="Espace perso",
+        org_type="personal",
+        owner_user_id=user.id,
+    )
+    db.add(org)
+    db.commit()
+    db.refresh(org)
+
+    link = models.OrganizationUser(
+        user_id=user.id,
+        organization_id=org.id,
+        role="owner",
+    )
+    db.add(link)
+    db.commit()
+    db.refresh(org)
+    return org
 
 @router.post("/register", response_model=schemas.UserOut, status_code=201)
 async def register(
@@ -42,6 +76,7 @@ async def register(
         db.add(role); db.commit(); db.refresh(role)
     link = models.UserRole(user_id=u.id, role_id=role.id)
     db.add(link); db.commit()
+    ensure_personal_organization(db, u)
     
     # TODO: Envoyer email de vérification
     print(f"Email de vérification pour {user.email}: {verification_token}")
@@ -82,6 +117,7 @@ async def login(
     u.locked_until = None
     u.last_login = datetime.utcnow()
     db.commit()
+    ensure_personal_organization(db, u)
     
     roles = [r.name for r in u.roles]
     access_token = security.create_access_token(str(u.id), roles=roles)
@@ -243,6 +279,258 @@ async def reset_password(
 @router.get("/me", response_model=schemas.UserOut)
 async def get_current_user(current_user: models.User = Depends(security.get_current_user)):
     return current_user
+
+
+@router.get("/projects", response_model=list[schemas.ProjectOut])
+async def list_projects(
+    current_user: models.User = Depends(security.get_current_user),
+    db: Session = Depends(get_db),
+    organization_id: str | None = Header(default=None),
+):
+    """Retourne la liste des projets associés à l'utilisateur courant."""
+    # Utilise la relation many-to-many définie sur User.projects
+    user = db.query(models.User).filter_by(id=current_user.id).first()
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    projects = (
+        db.query(models.Project)
+        .join(models.ProjectUser, models.ProjectUser.project_id == models.Project.id)
+        .filter(models.ProjectUser.user_id == current_user.id)
+    )
+    if organization_id:
+        projects = projects.filter(models.Project.organization_id == organization_id)
+    return projects.all()
+
+
+@router.get("/projects/{project_id}", response_model=schemas.ProjectOut)
+async def get_project(
+    project_id: str,
+    current_user: models.User = Depends(security.get_current_user),
+    db: Session = Depends(get_db),
+    organization_id: str | None = Header(default=None),
+):
+    """Retourne un projet si l'utilisateur est membre."""
+    query = (
+        db.query(models.Project)
+        .join(models.ProjectUser, models.ProjectUser.project_id == models.Project.id)
+        .filter(
+            models.Project.id == project_id,
+            models.ProjectUser.user_id == current_user.id,
+        )
+    )
+    if organization_id:
+        query = query.filter(models.Project.organization_id == organization_id)
+    project = query.first()
+    if not project:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    return project
+
+
+@router.patch("/projects/{project_id}", response_model=schemas.ProjectOut)
+async def update_project(
+    project_id: str,
+    update: schemas.ProjectUpdate,
+    current_user: models.User = Depends(security.get_current_user),
+    db: Session = Depends(get_db),
+    organization_id: str | None = Header(default=None),
+):
+    """Met à jour un projet (actuellement: renommage)."""
+    query = (
+        db.query(models.Project)
+        .join(models.ProjectUser, models.ProjectUser.project_id == models.Project.id)
+        .filter(
+            models.Project.id == project_id,
+            models.ProjectUser.user_id == current_user.id,
+        )
+    )
+    if organization_id:
+        query = query.filter(models.Project.organization_id == organization_id)
+    project = query.first()
+    if not project:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+
+    if update.name:
+        project.name = update.name
+    db.commit()
+    db.refresh(project)
+    return project
+
+
+@router.delete("/projects/{project_id}", status_code=204)
+async def delete_project(
+    project_id: str,
+    current_user: models.User = Depends(security.get_current_user),
+    db: Session = Depends(get_db),
+    organization_id: str | None = Header(default=None),
+):
+    """Supprime un projet (si l'utilisateur en est membre)."""
+    query = (
+        db.query(models.Project)
+        .join(models.ProjectUser, models.ProjectUser.project_id == models.Project.id)
+        .filter(
+            models.Project.id == project_id,
+            models.ProjectUser.user_id == current_user.id,
+        )
+    )
+    if organization_id:
+        query = query.filter(models.Project.organization_id == organization_id)
+    project = query.first()
+    if not project:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+
+    db.delete(project)
+    db.commit()
+    return
+
+
+@router.post("/projects", response_model=schemas.ProjectOut, status_code=201)
+async def create_project(
+    project: schemas.ProjectCreate,
+    current_user: models.User = Depends(security.get_current_user),
+    db: Session = Depends(get_db),
+    organization_id: str | None = Header(default=None),
+):
+    """Crée un projet et l'associe à l'utilisateur courant.
+
+    Si aucun nom n'est fourni, génère un nom par défaut:
+    projet, projet_2, projet_3, ...
+    (par utilisateur).
+    """
+    # Récupérer tous les projets de l'utilisateur pour calculer le prochain nom
+    user = db.query(models.User).filter_by(id=current_user.id).first()
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    # Déterminer l'organisation cible (active)
+    if organization_id:
+        org = (
+            db.query(models.Organization)
+            .join(models.OrganizationUser, models.OrganizationUser.organization_id == models.Organization.id)
+            .filter(
+                models.Organization.id == organization_id,
+                models.OrganizationUser.user_id == current_user.id,
+            )
+            .first()
+        )
+        if not org:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Organization access denied")
+    else:
+        org = ensure_personal_organization(db, user)
+
+    base_name = "projet"
+    if project.name:
+        final_name = project.name
+    else:
+        existing_names = {
+            p.name for p in user.projects if p.organization_id == org.id
+        }
+        final_name = base_name
+        if final_name in existing_names:
+            i = 2
+            while f"{base_name}_{i}" in existing_names:
+                i += 1
+            final_name = f"{base_name}_{i}"
+
+    new_project = models.Project(
+        name=final_name,
+        description=project.description,
+        organization_id=org.id,
+    )
+    db.add(new_project)
+    db.commit()
+    db.refresh(new_project)
+
+    # Associer le projet à l'utilisateur courant
+    link = models.ProjectUser(user_id=current_user.id, project_id=new_project.id)
+    db.add(link)
+    db.commit()
+    db.refresh(new_project)
+
+    return new_project
+
+
+@router.get("/organizations", response_model=list[schemas.OrganizationOut])
+async def list_organizations(
+    current_user: models.User = Depends(security.get_current_user),
+    db: Session = Depends(get_db),
+):
+    orgs = (
+        db.query(models.Organization, models.OrganizationUser.role)
+        .join(models.OrganizationUser, models.OrganizationUser.organization_id == models.Organization.id)
+        .filter(models.OrganizationUser.user_id == current_user.id)
+        .all()
+    )
+    result: list[schemas.OrganizationOut] = []
+    for org, role in orgs:
+        result.append(
+            schemas.OrganizationOut(
+                id=org.id,
+                name=org.name,
+                org_type=org.org_type,
+                owner_user_id=org.owner_user_id,
+                role=role,
+            )
+        )
+    return result
+
+
+@router.post("/organizations", response_model=schemas.OrganizationOut, status_code=201)
+async def create_organization(
+    payload: schemas.OrganizationCreate,
+    current_user: models.User = Depends(security.get_current_user),
+    db: Session = Depends(get_db),
+):
+    org = models.Organization(
+        name=payload.name,
+        org_type="team",
+        owner_user_id=current_user.id,
+    )
+    db.add(org)
+    db.commit()
+    db.refresh(org)
+
+    link = models.OrganizationUser(
+        user_id=current_user.id,
+        organization_id=org.id,
+        role="owner",
+    )
+    db.add(link)
+    db.commit()
+
+    return schemas.OrganizationOut(
+        id=org.id,
+        name=org.name,
+        org_type=org.org_type,
+        owner_user_id=org.owner_user_id,
+        role="owner",
+    )
+
+
+@router.post("/organizations/select", response_model=schemas.OrganizationOut)
+async def select_organization(
+    payload: schemas.OrganizationSelect,
+    current_user: models.User = Depends(security.get_current_user),
+    db: Session = Depends(get_db),
+):
+    row = (
+        db.query(models.Organization, models.OrganizationUser.role)
+        .join(models.OrganizationUser, models.OrganizationUser.organization_id == models.Organization.id)
+        .filter(
+            models.Organization.id == payload.organization_id,
+            models.OrganizationUser.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Organization access denied")
+    org, role = row
+    return schemas.OrganizationOut(
+        id=org.id,
+        name=org.name,
+        org_type=org.org_type,
+        owner_user_id=org.owner_user_id,
+        role=role,
+    )
 
 @router.put("/me", response_model=schemas.UserOut)
 async def update_current_user(

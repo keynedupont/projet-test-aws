@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Projet - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-bg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-6">
+            <a href="/projects" class="text-sm text-text-secondary hover:text-text-primary">
+                ← Retour aux projets
+            </a>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-card border border-gray-border p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h1 class="text-2xl font-bold text-text-primary">
+                    {{ project.name }}
+                </h1>
+            </div>
+            {% if project.description %}
+            <p class="text-text-secondary text-sm mb-4">
+                {{ project.description }}
+            </p>
+            {% endif %}
+            <p class="text-xs text-text-muted">
+                ID: {{ project.id }}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

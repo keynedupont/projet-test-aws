@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 # Import dynamique du Base et settings
 from projet.auth.database import Base
+from projet.auth import models  # noqa: F401 - ensure metadata is fully loaded
 from projet.settings import settings
 
 # this is the Alembic Config object, which provides

@@ -1,0 +1,84 @@
+# Agent Rules
+
+## Priority Order
+When rules conflict, apply this hierarchy:
+1. **Correctness** — the solution must work
+2. **Simplicity** — the simplest correct solution wins
+3. **Elegance** — if two simple solutions exist, prefer the cleaner one
+
+---
+
+## Core Principles
+
+- **Minimal Impact**: Touch only what is necessary. Avoid side effects and scope creep.
+- **No Temporary Fixes**: Find root causes. No patches that defer the problem.
+- **Senior Standards**: Before presenting work, ask: *"Would a staff engineer approve this?"*
+
+---
+
+## Workflow
+
+### 1. Plan First
+- For any non-trivial task (3+ steps or architectural decisions), write a plan to `tasks/todo.md` with checkable items before writing any code.
+- If execution goes sideways, **stop and re-plan** — do not keep pushing.
+- Use plan mode for verification steps, not just for building.
+
+### 2. Verify Before Starting
+- Check in with the user after writing the plan, before starting implementation.
+- Raise ambiguities at this stage, not mid-execution.
+
+### 3. Track Progress
+- Mark items complete in `tasks/todo.md` as you go.
+- Provide a high-level summary of changes at each significant step.
+
+### 4. Verify Before Done
+- Never mark a task complete without proving it works.
+- Proof means: tests pass, logs are clean, and behavior matches the spec.
+- When relevant, diff behavior between main and your changes.
+
+### 5. Document Results
+- Add a review section to `tasks/todo.md` when the task is complete.
+- Capture decisions made and tradeoffs considered.
+
+---
+
+## Subagent Strategy
+
+- Use subagents to keep the main context window clean.
+- Assign **one focused objective per subagent** — no multi-tasking.
+- Use subagents for: research, exploration, parallel analysis, or isolated subtasks.
+- Reconcile subagent outputs explicitly before using them — do not assume consistency.
+
+---
+
+## Self-Improvement Loop
+
+- After **any correction from the user**: update `tasks/lessons.md` with the pattern.
+- Write the lesson as a rule that prevents the same mistake from recurring.
+- Review `tasks/lessons.md` at the start of each session for the active project.
+
+---
+
+## Bug Fixing
+
+- When given a bug report: fix it autonomously. Do not ask for hand-holding.
+- Use logs, errors, and failing tests as your starting point.
+- Fix failing CI tests without being asked how.
+- Zero context-switching required from the user.
+
+---
+
+## Code Quality
+
+- For non-trivial changes, pause and ask: *"Is there a more elegant solution?"*
+- If a fix feels hacky, apply this reframe: *"Knowing everything I know now, implement the elegant solution."*
+- Skip this step for simple, obvious fixes — do not over-engineer.
+
+---
+
+## File Conventions
+
+| File | Purpose |
+|---|---|
+| `tasks/todo.md` | Active plan with checkable items and review section |
+| `tasks/lessons.md` | Persistent rules learned from corrections |

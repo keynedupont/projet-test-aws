@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, Boolean, ForeignKey, UniqueConstraint, Table, DateTime
+from sqlalchemy import Integer, String, Boolean, ForeignKey, UniqueConstraint, DateTime, Text
 from datetime import datetime
+import uuid
 from .database import Base
 
 class User(Base):
@@ -26,6 +27,12 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     roles: Mapped[list["Role"]] = relationship("Role", secondary="user_roles", back_populates="users")
+    projects: Mapped[list["Project"]] = relationship("Project", secondary="project_users", back_populates="users")
+    organizations: Mapped[list["Organization"]] = relationship(
+        "Organization",
+        secondary="organization_users",
+        back_populates="users",
+    )
 
 
 class Role(Base):
@@ -52,3 +59,81 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
     user: Mapped["User"] = relationship("User")
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    # UUID stocké en texte pour compatibilité SQLite / Postgres
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+    )
+    organization_id: Mapped[str | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+    users: Mapped[list[User]] = relationship(
+        "User",
+        secondary="project_users",
+        back_populates="projects",
+    )
+    organization: Mapped["Organization"] = relationship("Organization", back_populates="projects")
+
+
+class ProjectUser(Base):
+    __tablename__ = "project_users"
+    __table_args__ = (UniqueConstraint("user_id", "project_id", name="uq_user_project"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    org_type: Mapped[str] = mapped_column(String(20), default="team", nullable=False)  # team | personal
+    owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+    users: Mapped[list[User]] = relationship(
+        "User",
+        secondary="organization_users",
+        back_populates="organizations",
+    )
+    projects: Mapped[list["Project"]] = relationship("Project", back_populates="organization")
+
+
+class OrganizationUser(Base):
+    __tablename__ = "organization_users"
+    __table_args__ = (UniqueConstraint("user_id", "organization_id", name="uq_user_organization"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), default="member", nullable=False)  # owner|admin|member|viewer

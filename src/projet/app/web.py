@@ -8,6 +8,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 import httpx
 import os
+from urllib.parse import urlencode
 
 from projet.settings import settings
 from projet.middleware import setup_error_middleware
@@ -23,6 +24,7 @@ class CookieConfig(BaseModel):
 
 AUTH_SERVICE_URL = settings.AUTH_SERVICE_URL
 COOKIE = CookieConfig()
+ACTIVE_ORG_COOKIE = "active_organization_id"
 HTTP_TIMEOUT = 5.0
 client = httpx.AsyncClient(timeout=HTTP_TIMEOUT)
 
@@ -43,6 +45,61 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 def get_token_from_cookie(request: Request) -> str | None:
     return request.cookies.get(COOKIE.name)
 
+def login_redirect(next_path: str | None = None) -> RedirectResponse:
+    params = f"?{urlencode({'next': next_path})}" if next_path else ""
+    return RedirectResponse(url=f"/login{params}", status_code=303)
+
+
+async def require_auth(request: Request) -> tuple[str, dict] | RedirectResponse:
+    """Assure que l'utilisateur est authentifié pour une page SSR."""
+    next_path = request.url.path
+    token = get_token_from_cookie(request)
+    if not token:
+        return login_redirect(next_path=next_path)
+
+    try:
+        me_resp = await client.get(f"{AUTH_SERVICE_URL}/me", headers={"Authorization": f"Bearer {token}"})
+    except httpx.HTTPError:
+        return login_redirect(next_path=next_path)
+
+    if me_resp.status_code != 200:
+        resp = login_redirect(next_path=next_path)
+        resp.delete_cookie(COOKIE.name, path="/", domain=COOKIE.domain)
+        return resp
+
+    return token, me_resp.json()
+
+
+async def get_organizations_context(request: Request, token: str) -> tuple[str | None, str | None, list[dict]]:
+    """Retourne (active_org_id, active_org_name, organizations)."""
+    try:
+        r = await client.get(
+            f"{AUTH_SERVICE_URL}/auth/organizations",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    except httpx.HTTPError:
+        return None, None, []
+
+    if r.status_code != 200:
+        return None, None, []
+
+    organizations = r.json() if isinstance(r.json(), list) else []
+    if not organizations:
+        return None, None, []
+
+    current_cookie_org = request.cookies.get(ACTIVE_ORG_COOKIE)
+    active_org = next((o for o in organizations if o.get("id") == current_cookie_org), None)
+    if active_org is None:
+        active_org = organizations[0]
+
+    return active_org.get("id"), active_org.get("name"), organizations
+
+
+def auth_headers(token: str, organization_id: str | None = None) -> dict[str, str]:
+    headers = {"Authorization": f"Bearer {token}"}
+    if organization_id:
+        headers["organization-id"] = organization_id
+    return headers
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
@@ -123,13 +180,23 @@ async def signup(
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": None, "project_name": "projet"})
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "error": None,
+            "project_name": "projet",
+            "next": request.query_params.get("next"),
+        },
+    )
 
 
 @app.post("/login")
 async def login(request: Request, response: Response, email: EmailStr = Form(...), password: str = Form(...)):
     data = {"username": str(email), "password": password}
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    form = await request.form()
+    next_path = form.get("next") or request.query_params.get("next") or "/dashboard"
     try:
         r = await client.post(f"{AUTH_SERVICE_URL}/auth/login", data=data, headers=headers)
     except httpx.HTTPError:
@@ -137,7 +204,7 @@ async def login(request: Request, response: Response, email: EmailStr = Form(...
     if r.status_code != 200:
         return templates.TemplateResponse("login.html", {"request": request, "error": "Identifiants invalides", "project_name": "projet"})
     token = r.json().get("access_token")
-    resp = RedirectResponse(url="/dashboard", status_code=303)
+    resp = RedirectResponse(url=str(next_path), status_code=303)
     resp.set_cookie(
         key=COOKIE.name,
         value=token,
@@ -154,6 +221,7 @@ async def login(request: Request, response: Response, email: EmailStr = Form(...
 def logout(request: Request):
     resp = RedirectResponse(url="/", status_code=303)
     resp.delete_cookie(COOKIE.name, path="/", domain=COOKIE.domain)
+    resp.delete_cookie(ACTIVE_ORG_COOKIE, path="/", domain=COOKIE.domain)
     return resp
 
 
@@ -174,17 +242,314 @@ async def health():
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
+    active_org_id, active_org_name, organizations = await get_organizations_context(request, token)
+    project_count = 0
     try:
-        r = await client.get(f"{AUTH_SERVICE_URL}/me", headers={"Authorization": f"Bearer {token}"})
+        projects_resp = await client.get(
+            f"{AUTH_SERVICE_URL}/auth/projects",
+            headers=auth_headers(token, active_org_id),
+        )
+        if projects_resp.status_code == 200 and isinstance(projects_resp.json(), list):
+            project_count = len(projects_resp.json())
     except httpx.HTTPError:
-        return RedirectResponse(url="/login", status_code=303)
-    if r.status_code != 200:
-        return RedirectResponse(url="/login", status_code=303)
-    user = r.json()
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
+        project_count = 0
+
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "user": user,
+            "project_count": project_count,
+            "active_organization_id": active_org_id,
+            "active_organization_name": active_org_name,
+            "organizations": organizations,
+        },
+    )
+
+
+@app.get("/projects", response_class=HTMLResponse)
+async def projects_page(request: Request):
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
+    active_org_id, active_org_name, organizations = await get_organizations_context(request, token)
+
+    try:
+        r = await client.get(f"{AUTH_SERVICE_URL}/auth/projects", headers=auth_headers(token, active_org_id))
+    except httpx.HTTPError:
+        return login_redirect(next_path=request.url.path)
+
+    projects = r.json() if r.status_code == 200 else []
+    error = None if r.status_code == 200 else "Impossible de récupérer la liste des projets"
+
+    return templates.TemplateResponse(
+        "projects.html",
+        {
+            "request": request,
+            "projects": projects,
+            "error": error,
+            "user": user,
+            "active_organization_id": active_org_id,
+            "active_organization_name": active_org_name,
+            "organizations": organizations,
+        },
+    )
+
+
+@app.post("/projects", response_class=HTMLResponse)
+async def create_project_page(
+    request: Request,
+):
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
+    active_org_id, active_org_name, organizations = await get_organizations_context(request, token)
+
+    try:
+        r = await client.post(
+            f"{AUTH_SERVICE_URL}/auth/projects",
+            json={},
+            headers=auth_headers(token, active_org_id),
+        )
+    except httpx.HTTPError:
+        # Re-afficher la page avec une erreur générique
+        return templates.TemplateResponse(
+            "projects.html",
+            {
+                "request": request,
+                "projects": [],
+                "error": "Impossible de créer le projet (service indisponible)",
+                "user": user,
+                "active_organization_id": active_org_id,
+                "active_organization_name": active_org_name,
+                "organizations": organizations,
+            },
+        )
+
+    if r.status_code >= 400:
+        # Récupérer les projets et l'utilisateur pour réafficher la page avec une erreur
+        try:
+            list_resp = await client.get(
+                f"{AUTH_SERVICE_URL}/auth/projects",
+                headers=auth_headers(token, active_org_id),
+            )
+            projects = list_resp.json() if list_resp.status_code == 200 else []
+            me_resp = await client.get(
+                f"{AUTH_SERVICE_URL}/me",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            user = me_resp.json() if me_resp.status_code == 200 else None
+        except httpx.HTTPError:
+            projects = []
+            user = None
+
+        error_detail = "Erreur lors de la création du projet"
+        try:
+            data = r.json()
+            if isinstance(data, dict) and "detail" in data:
+                error_detail = data["detail"]
+        except Exception:
+            pass
+
+        return templates.TemplateResponse(
+            "projects.html",
+            {
+                "request": request,
+                "projects": projects,
+                "error": error_detail,
+                "user": user,
+                "active_organization_id": active_org_id,
+                "active_organization_name": active_org_name,
+                "organizations": organizations,
+            },
+        )
+
+    # Succès ⇒ récupérer le projet et rediriger vers sa page de détail
+    created = r.json()
+    project_id = created.get("id")
+    if project_id:
+        return RedirectResponse(url=f"/projects/{project_id}", status_code=303)
+    return RedirectResponse(url="/projects", status_code=303)
+
+
+@app.get("/projects/{project_id}", response_class=HTMLResponse)
+async def project_detail_page(request: Request, project_id: str):
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
+    active_org_id, active_org_name, organizations = await get_organizations_context(request, token)
+
+    try:
+        proj_resp = await client.get(
+            f"{AUTH_SERVICE_URL}/auth/projects/{project_id}",
+            headers=auth_headers(token, active_org_id),
+        )
+    except httpx.HTTPError:
+        return RedirectResponse(url="/projects", status_code=303)
+
+    if proj_resp.status_code != 200:
+        return RedirectResponse(url="/projects", status_code=303)
+
+    project = proj_resp.json()
+
+    return templates.TemplateResponse(
+        "project_detail.html",
+        {
+            "request": request,
+            "project": project,
+            "user": user,
+            "active_organization_id": active_org_id,
+            "active_organization_name": active_org_name,
+            "organizations": organizations,
+        },
+    )
+
+
+@app.post("/projects/{project_id}/rename", response_class=HTMLResponse)
+async def rename_project_page(
+    request: Request,
+    project_id: str,
+    name: str = Form(...),
+):
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, _user = auth
+    active_org_id, _active_org_name, _organizations = await get_organizations_context(request, token)
+
+    try:
+        await client.patch(
+            f"{AUTH_SERVICE_URL}/auth/projects/{project_id}",
+            json={"name": name},
+            headers=auth_headers(token, active_org_id),
+        )
+    except httpx.HTTPError:
+        return RedirectResponse(url=f"/projects/{project_id}", status_code=303)
+
+    return RedirectResponse(url=f"/projects/{project_id}", status_code=303)
+
+
+@app.post("/projects/{project_id}/delete", response_class=HTMLResponse)
+async def delete_project_page(
+    request: Request,
+    project_id: str,
+):
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, _user = auth
+    active_org_id, _active_org_name, _organizations = await get_organizations_context(request, token)
+
+    try:
+        await client.delete(
+            f"{AUTH_SERVICE_URL}/auth/projects/{project_id}",
+            headers=auth_headers(token, active_org_id),
+        )
+    except httpx.HTTPError:
+        return RedirectResponse(url="/projects", status_code=303)
+
+    return RedirectResponse(url="/projects", status_code=303)
+
+
+@app.post("/organizations/select")
+async def select_organization_web(
+    request: Request,
+    organization_id: str = Form(...),
+    next_path: str = Form("/dashboard"),
+):
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, _user = auth
+    try:
+        r = await client.post(
+            f"{AUTH_SERVICE_URL}/auth/organizations/select",
+            json={"organization_id": organization_id},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    except httpx.HTTPError:
+        return RedirectResponse(url=next_path or "/dashboard", status_code=303)
+
+    resp = RedirectResponse(url=next_path or "/dashboard", status_code=303)
+    if r.status_code == 200:
+        resp.set_cookie(
+            key=ACTIVE_ORG_COOKIE,
+            value=organization_id,
+            httponly=COOKIE.httponly,
+            secure=COOKIE.secure,
+            samesite=COOKIE.samesite,
+            domain=COOKIE.domain,
+            path="/",
+        )
+    return resp
+
+
+@app.get("/organizations", response_class=HTMLResponse)
+async def organizations_page(request: Request):
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
+    active_org_id, active_org_name, organizations = await get_organizations_context(request, token)
+    error = None
+    if not organizations:
+        error = "Impossible de récupérer les organisations"
+    return templates.TemplateResponse(
+        "organizations.html",
+        {
+            "request": request,
+            "user": user,
+            "organizations": organizations,
+            "active_organization_id": active_org_id,
+            "active_organization_name": active_org_name,
+            "error": error,
+        },
+    )
+
+
+@app.post("/organizations", response_class=HTMLResponse)
+async def create_organization_web(
+    request: Request,
+    name: str = Form(...),
+):
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, _user = auth
+
+    try:
+        r = await client.post(
+            f"{AUTH_SERVICE_URL}/auth/organizations",
+            json={"name": name},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    except httpx.HTTPError:
+        return RedirectResponse(url="/organizations", status_code=303)
+
+    if r.status_code == 201:
+        created = r.json()
+        org_id = created.get("id")
+        resp = RedirectResponse(url="/organizations", status_code=303)
+        if org_id:
+            resp.set_cookie(
+                key=ACTIVE_ORG_COOKIE,
+                value=org_id,
+                httponly=COOKIE.httponly,
+                secure=COOKIE.secure,
+                samesite=COOKIE.samesite,
+                domain=COOKIE.domain,
+                path="/",
+            )
+        return resp
+
+    return RedirectResponse(url="/organizations", status_code=303)
 
 
 async def require_roles(token: str | None, needed: list[str]) -> bool:
@@ -202,82 +567,79 @@ async def require_roles(token: str | None, needed: list[str]) -> bool:
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
     if not await require_roles(token, ["admin"]):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
-    # Récupérer les infos utilisateur pour l'affichage
-    try:
-        r = await client.get(f"{AUTH_SERVICE_URL}/me", headers={"Authorization": f"Bearer {token}"})
-        if r.status_code == 200:
-            user = r.json()
-            return templates.TemplateResponse("admin.html", {"request": request, "user": user})
-        else:
-            return RedirectResponse(url="/login", status_code=303)
-    except httpx.HTTPError:
-        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse("admin.html", {"request": request, "user": user})
 
 
 @app.get("/admin/users", response_class=HTMLResponse)
 async def admin_users(request: Request):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
     if not await require_roles(token, ["admin"]):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # TODO: Récupérer la liste des utilisateurs depuis l'API
-    return templates.TemplateResponse("admin-users.html", {"request": request, "users": []})
+    return templates.TemplateResponse("admin-users.html", {"request": request, "user": user, "users": []})
 
 
 @app.get("/admin/roles", response_class=HTMLResponse)
 async def admin_roles(request: Request):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
     if not await require_roles(token, ["admin"]):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # TODO: Récupérer la liste des rôles depuis l'API
-    return templates.TemplateResponse("admin-roles.html", {"request": request, "roles": []})
+    return templates.TemplateResponse("admin-roles.html", {"request": request, "user": user, "roles": []})
 
 
 @app.get("/admin/stats", response_class=HTMLResponse)
 async def admin_stats(request: Request):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
     if not await require_roles(token, ["admin"]):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # TODO: Récupérer les statistiques depuis l'API
-    return templates.TemplateResponse("admin-stats.html", {"request": request, "stats": {}})
+    return templates.TemplateResponse("admin-stats.html", {"request": request, "user": user, "stats": {}})
 
 
 @app.get("/admin/logs", response_class=HTMLResponse)
 async def admin_logs(request: Request):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
     if not await require_roles(token, ["admin"]):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # TODO: Récupérer les logs depuis l'API
-    return templates.TemplateResponse("admin-logs.html", {"request": request, "logs": []})
+    return templates.TemplateResponse("admin-logs.html", {"request": request, "user": user, "logs": []})
 
 
 @app.get("/admin/settings", response_class=HTMLResponse)
 async def admin_settings(request: Request):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, user = auth
     if not await require_roles(token, ["admin"]):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # TODO: Récupérer les paramètres système depuis l'API
-    return templates.TemplateResponse("admin-settings.html", {"request": request, "settings": {}})
+    return templates.TemplateResponse("admin-settings.html", {"request": request, "user": user, "settings": {}})
 
 
 @app.get("/forgot-password", response_class=HTMLResponse)
@@ -348,27 +710,19 @@ async def reset_password(request: Request, token: str = Form(...), password: str
 
 @app.get("/account", response_class=HTMLResponse)
 async def account_page(request: Request):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
-    
-    # Récupérer les infos utilisateur
-    try:
-        r = await client.get(f"{AUTH_SERVICE_URL}/me", headers={"Authorization": f"Bearer {token}"})
-        if r.status_code == 200:
-            user = r.json()
-            return templates.TemplateResponse("account.html", {"request": request, "user": user, "error": None, "success": None})
-        else:
-            return RedirectResponse(url="/login", status_code=303)
-    except httpx.HTTPError:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    _token, user = auth
+    return templates.TemplateResponse("account.html", {"request": request, "user": user, "error": None, "success": None})
 
 
 @app.post("/account")
 async def update_account(request: Request, first_name: str = Form(None), last_name: str = Form(None)):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, _user = auth
     
     # TODO: Implémenter la mise à jour du profil côté API
     # Pour l'instant, on simule un succès
@@ -383,7 +737,7 @@ async def update_account(request: Request, first_name: str = Form(None), last_na
                 "success": "Profil mis à jour avec succès !"
             })
         else:
-            return RedirectResponse(url="/login", status_code=303)
+            return login_redirect(next_path=request.url.path)
     except httpx.HTTPError:
         return templates.TemplateResponse("account.html", {
             "request": request, 
@@ -395,22 +749,25 @@ async def update_account(request: Request, first_name: str = Form(None), last_na
 
 @app.get("/change-password", response_class=HTMLResponse)
 async def change_password_page(request: Request):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
-    
-    return templates.TemplateResponse("change-password.html", {"request": request, "error": None, "success": None})
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    _token, user = auth
+
+    return templates.TemplateResponse("change-password.html", {"request": request, "user": user, "error": None, "success": None})
 
 
 @app.post("/change-password")
 async def change_password(request: Request, current_password: str = Form(...), new_password: str = Form(...), confirm_password: str = Form(...)):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    _token, user = auth
     
     if new_password != confirm_password:
         return templates.TemplateResponse("change-password.html", {
             "request": request, 
+            "user": user,
             "error": "Les mots de passe ne correspondent pas", 
             "success": None
         })
@@ -419,6 +776,7 @@ async def change_password(request: Request, current_password: str = Form(...), n
     # Pour l'instant, on simule un succès
     return templates.TemplateResponse("change-password.html", {
         "request": request, 
+        "user": user,
         "error": None, 
         "success": "Mot de passe changé avec succès !"
     })
@@ -426,27 +784,19 @@ async def change_password(request: Request, current_password: str = Form(...), n
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
-    
-    # Récupérer les infos utilisateur
-    try:
-        r = await client.get(f"{AUTH_SERVICE_URL}/me", headers={"Authorization": f"Bearer {token}"})
-        if r.status_code == 200:
-            user = r.json()
-            return templates.TemplateResponse("settings.html", {"request": request, "user": user, "error": None, "success": None})
-        else:
-            return RedirectResponse(url="/login", status_code=303)
-    except httpx.HTTPError:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    _token, user = auth
+    return templates.TemplateResponse("settings.html", {"request": request, "user": user, "error": None, "success": None})
 
 
 @app.post("/settings")
 async def update_settings(request: Request, theme: str = Form("auto"), language: str = Form("fr")):
-    token = get_token_from_cookie(request)
-    if not token:
-        return RedirectResponse(url="/login", status_code=303)
+    auth = await require_auth(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    token, _user = auth
     
     # TODO: Implémenter la sauvegarde des paramètres côté API
     # Pour l'instant, on simule un succès
@@ -463,7 +813,7 @@ async def update_settings(request: Request, theme: str = Form("auto"), language:
                 "success": "Paramètres sauvegardés avec succès !"
             })
         else:
-            return RedirectResponse(url="/login", status_code=303)
+            return login_redirect(next_path=request.url.path)
     except httpx.HTTPError:
         return templates.TemplateResponse("settings.html", {
             "request": request, 

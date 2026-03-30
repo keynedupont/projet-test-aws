@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Organisations - Umagus{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-bg">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-text-primary mb-2">Organisations</h1>
+            <p class="text-text-secondary">Gérez vos espaces de travail et choisissez l'organisation active.</p>
+        </div>
+
+        {% if error %}
+        <div class="mb-6 p-4 rounded-lg border border-red-200 bg-red-50 text-red-700">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <div class="bg-white rounded-xl shadow-card p-6 border border-gray-border mb-8">
+            <h2 class="text-lg font-semibold text-text-primary mb-4">Créer une organisation</h2>
+            <form method="post" action="/organizations" class="flex flex-col sm:flex-row gap-3">
+                <input
+                    type="text"
+                    name="name"
+                    required
+                    placeholder="Nom de l'organisation"
+                    class="flex-1 px-4 py-2 border border-gray-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                <button type="submit" class="btn-primary">Créer</button>
+            </form>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for org in organizations %}
+            <div class="bg-white rounded-xl shadow-card p-6 border border-gray-border">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-text-primary">{{ org.name }}</h3>
+                        <p class="text-sm text-text-muted mt-1">
+                            Type: {{ "Perso" if org.org_type == "personal" else "Team" }}
+                        </p>
+                        <p class="text-sm text-text-muted">Rôle: {{ org.role or "member" }}</p>
+                    </div>
+                    {% if active_organization_id and org.id == active_organization_id %}
+                    <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Active</span>
+                    {% endif %}
+                </div>
+                <form method="post" action="/organizations/select" class="mt-4">
+                    <input type="hidden" name="organization_id" value="{{ org.id }}">
+                    <input type="hidden" name="next_path" value="/organizations">
+                    <button type="submit" class="btn-ghost w-full">Utiliser cette organisation</button>
+                </form>
+            </div>
+            {% else %}
+            <div class="col-span-full bg-white rounded-xl shadow-card p-6 border border-gray-border">
+                <p class="text-text-secondary">Aucune organisation trouvée.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+{% endblock %}

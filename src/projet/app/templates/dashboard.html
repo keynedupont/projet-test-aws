@@ -9,17 +9,17 @@
         <!-- En-tête de bienvenue -->
         <div class="mb-8">
             <h1 class="text-3xl font-bold text-text-primary mb-2">
-                Bonjour {{ user.email }} 👋
+                Bonjour {{ user.email }}
             </h1>
             <p class="text-text-secondary">
-                Bienvenue sur votre tableau de bord ML
+                Bienvenue sur votre tableau de bord
             </p>
         </div>
         
         <!-- Cartes d'information -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <!-- Carte 1 : Projets -->
-            <div class="bg-white rounded-xl shadow-card p-6 border border-gray-border">
+            <a href="/projects" class="bg-white rounded-xl shadow-card p-6 border border-gray-border block hover:shadow-lg transition-shadow">
                 <div class="flex items-center">
                     <div class="p-3 bg-blue-100 rounded-lg">
                         <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,10 +28,10 @@
                     </div>
                     <div class="ml-4">
                         <h3 class="text-lg font-semibold text-text-primary">Projets</h3>
-                        <p class="text-2xl font-bold text-accent">0</p>
+                        <p class="text-2xl font-bold text-accent">{{ project_count if project_count is defined else 0 }}</p>
                     </div>
                 </div>
-            </div>
+            </a>
             
             <!-- Carte 2 : Modèles -->
             <div class="bg-white rounded-xl shadow-card p-6 border border-gray-border">
@@ -42,7 +42,7 @@
                         </svg>
                     </div>
                     <div class="ml-4">
-                        <h3 class="text-lg font-semibold text-text-primary">Modèles</h3>
+                        <h3 class="text-lg font-semibold text-text-primary">Modules</h3>
                         <p class="text-2xl font-bold text-accent">0</p>
                     </div>
                 </div>
@@ -72,7 +72,7 @@
                     <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
-                    Nouveau modèle
+                    Nouveau module
                 </a>
                 <a href="/data" class="btn-ghost text-center">
                     <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

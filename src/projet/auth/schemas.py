@@ -94,3 +94,48 @@ class PasswordChange(BaseModel):
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
             raise ValueError('Le mot de passe doit contenir au moins un caractère spécial')
         return v
+
+
+class ProjectBase(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ProjectCreate(ProjectBase):
+    """Données nécessaires pour créer un projet.
+
+    name peut être omis : dans ce cas, un nom par défaut sera généré.
+    """
+    pass
+
+
+class ProjectOut(ProjectBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+
+
+class OrganizationCreate(BaseModel):
+    name: str
+
+
+class OrganizationOut(BaseModel):
+    id: str
+    name: str
+    org_type: str
+    owner_user_id: int
+    role: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrganizationSelect(BaseModel):
+    organization_id: str

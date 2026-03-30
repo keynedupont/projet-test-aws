@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Projets{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-bg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-text-primary">Projets</h1>
+                <p class="text-text-secondary text-sm mt-1">
+                    Gérez vos projets et collaborez avec d'autres utilisateurs.
+                </p>
+            </div>
+            <form method="post" action="/projects">
+                <button
+                    type="submit"
+                    class="btn-primary px-4 py-2 text-sm"
+                >
+                    Nouveau projet
+                </button>
+            </form>
+        </div>
+
+        {% if error %}
+        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% if projects and projects|length > 0 %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for project in projects %}
+            <div class="bg-white rounded-xl shadow-card border border-gray-border p-0 flex flex-col justify-between">
+                <a href="/projects/{{ project.id }}" class="block p-6">
+                    <div>
+                        <h2 class="text-lg font-semibold text-text-primary truncate">{{ project.name }}</h2>
+                        {% if project.description %}
+                        <p class="mt-2 text-sm text-text-secondary line-clamp-3">
+                            {{ project.description }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div class="mt-4 flex items-center justify-between text-xs text-text-muted">
+                        <span>Créé le {{ project.created_at or '' }}</span>
+                    </div>
+                </a>
+                <div class="flex items-center justify-end px-3 pb-3">
+                    <div class="relative">
+                        <button
+                            type="button"
+                            onclick="const m=document.getElementById('project-menu-{{ project.id }}'); if(m){ m.classList.toggle('hidden'); }"
+                            class="text-text-secondary hover:text-text-primary rounded-full p-1 hover:bg-gray-bg"
+                            aria-label="Actions projet"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 5.25a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 8a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 8a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
+                            </svg>
+                        </button>
+                        <div
+                            id="project-menu-{{ project.id }}"
+                            class="hidden absolute right-0 mt-1 w-40 bg-white border border-gray-border rounded-lg shadow-card z-10"
+                        >
+                            <form method="post" action="/projects/{{ project.id }}/rename" class="px-3 py-2 text-left text-sm text-text-primary border-b border-gray-border">
+                                <button type="submit" class="w-full text-left">
+                                    Renommer (à venir)
+                                </button>
+                            </form>
+                            <form method="post" action="/projects/{{ project.id }}/delete" class="px-3 py-2 text-left text-sm text-red-600">
+                                <button type="submit" class="w-full text-left">
+                                    Supprimer
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-xl shadow-card border border-dashed border-gray-border p-8 text-center">
+            <p class="text-text-secondary mb-4">
+                Vous n'avez encore aucun projet.
+            </p>
+            <form method="post" action="/projects">
+                <button
+                    type="submit"
+                    class="btn-primary px-4 py-2 text-sm"
+                >
+                    Créer votre premier projet
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

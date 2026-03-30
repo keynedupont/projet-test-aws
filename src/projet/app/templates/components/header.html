@@ -21,8 +21,7 @@
                 <nav class="hidden md:flex space-x-1">
                     <a href="/" class="nav-link">Accueil</a>
                     <a href="/dashboard" class="nav-link">Dashboard</a>
-                    <a href="/models" class="nav-link">Modèles</a>
-                    <a href="/data" class="nav-link">Données</a>
+                    <a href="/projects" class="nav-link">Projets</a>
                 </nav>
                 {% endif %}
             </div>
@@ -38,7 +37,6 @@
                         <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-white text-sm font-medium">
                             {{ user.email[0].upper() }}
                         </div>
-                        <span class="hidden sm:block text-sm font-medium">{{ user.email }}</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
@@ -53,7 +51,58 @@
                          x-transition:leave="transition ease-in duration-75"
                          x-transition:leave-start="transform opacity-100 scale-100"
                          x-transition:leave-end="transform opacity-0 scale-95"
-                         class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-card border border-gray-border py-1 z-50">
+                         class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-card border border-gray-border py-1 z-50">
+                        
+                        <div class="px-4 py-3 border-b border-gray-border">
+                            <p class="text-xs text-text-muted">Connecté en tant que</p>
+                            <p class="text-sm font-medium text-text-primary break-all">{{ user.email }}</p>
+                            <div class="mt-2" x-data="{ orgMenuOpen: false }" @click.away="orgMenuOpen = false">
+                                <p class="text-xs text-text-muted mb-1">Organisation active</p>
+                                <button
+                                    type="button"
+                                    @click="orgMenuOpen = !orgMenuOpen"
+                                    class="w-full flex items-center justify-between text-sm px-3 py-2 rounded-lg border border-gray-border hover:bg-gray-light text-text-primary transition-colors"
+                                >
+                                    <span class="truncate">{{ active_organization_name if active_organization_name is defined else "Espace perso" }}</span>
+                                    <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </button>
+                                <div
+                                    x-show="orgMenuOpen"
+                                    x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="transform opacity-0 scale-95"
+                                    x-transition:enter-end="transform opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-75"
+                                    x-transition:leave-start="transform opacity-100 scale-100"
+                                    x-transition:leave-end="transform opacity-0 scale-95"
+                                    class="mt-2 border border-gray-border rounded-lg bg-white overflow-hidden shadow-card"
+                                >
+                                    {% if organizations is defined and organizations|length > 0 %}
+                                        {% for org in organizations %}
+                                        <form method="post" action="/organizations/select">
+                                            <input type="hidden" name="next_path" value="{{ request.url.path }}">
+                                            <input type="hidden" name="organization_id" value="{{ org.id }}">
+                                            <button
+                                                type="submit"
+                                                class="w-full text-left px-3 py-2 text-sm hover:bg-gray-light transition-colors flex items-center justify-between {% if active_organization_id is defined and org.id == active_organization_id %}font-semibold text-text-primary bg-blue-50/40{% else %}text-text-secondary{% endif %}"
+                                            >
+                                                <span class="truncate pr-3">{{ org.name }}</span>
+                                                {% if active_organization_id is defined and org.id == active_organization_id %}
+                                                <svg class="w-4 h-4 text-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                </svg>
+                                                {% endif %}
+                                            </button>
+                                        </form>
+                                        {% endfor %}
+                                    {% endif %}
+                                    <a href="/organizations" class="block px-3 py-2 text-sm border-t border-gray-border text-text-primary hover:bg-gray-light transition-colors">
+                                        Gerer les organisations
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                         
                         <a href="/account" class="block px-4 py-2 text-sm text-text-primary hover:bg-gray-light">
                             <div class="flex items-center space-x-2">
@@ -130,8 +179,6 @@
             <div class="px-2 pt-2 pb-3 space-y-1">
                 <a href="/" class="nav-link block">Accueil</a>
                 <a href="/dashboard" class="nav-link block">Dashboard</a>
-                <a href="/models" class="nav-link block">Modèles</a>
-                <a href="/data" class="nav-link block">Données</a>
             </div>
             {% endif %}
         </div>

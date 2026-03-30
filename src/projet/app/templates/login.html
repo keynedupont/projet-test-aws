@@ -43,6 +43,9 @@
                 {% endif %}
                 
                 <form method="post" class="space-y-6">
+                    {% if next %}
+                    <input type="hidden" name="next" value="{{ next }}">
+                    {% endif %}
                     <div>
                         <label for="email" class="form-label">
                             Adresse email
