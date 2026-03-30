@@ -104,7 +104,18 @@ def auth_headers(token: str, organization_id: str | None = None) -> dict[str, st
 
 def render_template(name: str, context: dict, **kwargs):
     """Compat rendering across Starlette TemplateResponse signatures."""
-    return templates.TemplateResponse(name=name, context=context, **kwargs)
+    request = context.get("request")
+    if request is None:
+        raise ValueError("Template context must include 'request'")
+
+    # Starlette signature differs by version:
+    # - TemplateResponse(name=..., request=..., context=...)
+    # - TemplateResponse(name=..., context=...)
+    # Keep both for cross-environment compatibility.
+    try:
+        return templates.TemplateResponse(name=name, request=request, context=context, **kwargs)
+    except TypeError:
+        return templates.TemplateResponse(name=name, context=context, **kwargs)
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
