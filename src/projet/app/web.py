@@ -101,11 +101,16 @@ def auth_headers(token: str, organization_id: str | None = None) -> dict[str, st
         headers["organization-id"] = organization_id
     return headers
 
+
+def render_template(name: str, context: dict, **kwargs):
+    """Compat rendering across Starlette TemplateResponse signatures."""
+    return templates.TemplateResponse(name=name, context=context, **kwargs)
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     # Utilisé côté header pour n'afficher que Connexion / S'inscrire
     is_authenticated = get_token_from_cookie(request) is not None
-    return templates.TemplateResponse(
+    return render_template(
         "index.html",
         {
             "request": request,
@@ -117,7 +122,7 @@ def index(request: Request):
 
 @app.get("/signup", response_class=HTMLResponse)
 def signup_page(request: Request):
-    return templates.TemplateResponse("signup.html", {"request": request, "error": None, "project_name": "projet"})
+    return render_template("signup.html", {"request": request, "error": None, "project_name": "projet"})
 
 
 @app.post("/signup")
@@ -130,14 +135,14 @@ async def signup(
 ):
     # Validation côté client
     if password != confirm_password:
-        return templates.TemplateResponse("signup.html", {
+        return render_template("signup.html", {
             "request": request,
             "error": "Les mots de passe ne correspondent pas",
             "project_name": "Plateforme ML"
         })
     
     if not terms:
-        return templates.TemplateResponse("signup.html", {
+        return render_template("signup.html", {
             "request": request,
             "error": "Vous devez accepter les conditions d'utilisation",
             "project_name": "Plateforme ML"
@@ -164,13 +169,13 @@ async def signup(
             except:
                 error_detail = "Erreur lors de l'inscription"
             
-            return templates.TemplateResponse("signup.html", {
+            return render_template("signup.html", {
                 "request": request,
                 "error": error_detail,
                 "project_name": "Plateforme ML"
             })
     except httpx.HTTPError:
-        return templates.TemplateResponse("signup.html", {
+        return render_template("signup.html", {
             "request": request,
             "error": "Service d'authentification indisponible",
             "project_name": "Plateforme ML"
@@ -180,7 +185,7 @@ async def signup(
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
-    return templates.TemplateResponse(
+    return render_template(
         "login.html",
         {
             "request": request,
@@ -200,9 +205,9 @@ async def login(request: Request, response: Response, email: EmailStr = Form(...
     try:
         r = await client.post(f"{AUTH_SERVICE_URL}/auth/login", data=data, headers=headers)
     except httpx.HTTPError:
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Service auth indisponible", "project_name": "projet"})
+        return render_template("login.html", {"request": request, "error": "Service auth indisponible", "project_name": "projet"})
     if r.status_code != 200:
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Identifiants invalides", "project_name": "projet"})
+        return render_template("login.html", {"request": request, "error": "Identifiants invalides", "project_name": "projet"})
     token = r.json().get("access_token")
     resp = RedirectResponse(url=str(next_path), status_code=303)
     resp.set_cookie(
@@ -258,7 +263,7 @@ async def dashboard(request: Request):
     except httpx.HTTPError:
         project_count = 0
 
-    return templates.TemplateResponse(
+    return render_template(
         "dashboard.html",
         {
             "request": request,
@@ -287,7 +292,7 @@ async def projects_page(request: Request):
     projects = r.json() if r.status_code == 200 else []
     error = None if r.status_code == 200 else "Impossible de récupérer la liste des projets"
 
-    return templates.TemplateResponse(
+    return render_template(
         "projects.html",
         {
             "request": request,
@@ -319,7 +324,7 @@ async def create_project_page(
         )
     except httpx.HTTPError:
         # Re-afficher la page avec une erreur générique
-        return templates.TemplateResponse(
+        return render_template(
             "projects.html",
             {
                 "request": request,
@@ -357,7 +362,7 @@ async def create_project_page(
         except Exception:
             pass
 
-        return templates.TemplateResponse(
+        return render_template(
             "projects.html",
             {
                 "request": request,
@@ -399,7 +404,7 @@ async def project_detail_page(request: Request, project_id: str):
 
     project = proj_resp.json()
 
-    return templates.TemplateResponse(
+    return render_template(
         "project_detail.html",
         {
             "request": request,
@@ -501,7 +506,7 @@ async def organizations_page(request: Request):
     error = None
     if not organizations:
         error = "Impossible de récupérer les organisations"
-    return templates.TemplateResponse(
+    return render_template(
         "organizations.html",
         {
             "request": request,
@@ -574,7 +579,7 @@ async def admin_page(request: Request):
     if not await require_roles(token, ["admin"]):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
-    return templates.TemplateResponse("admin.html", {"request": request, "user": user})
+    return render_template("admin.html", {"request": request, "user": user})
 
 
 @app.get("/admin/users", response_class=HTMLResponse)
@@ -587,7 +592,7 @@ async def admin_users(request: Request):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # TODO: Récupérer la liste des utilisateurs depuis l'API
-    return templates.TemplateResponse("admin-users.html", {"request": request, "user": user, "users": []})
+    return render_template("admin-users.html", {"request": request, "user": user, "users": []})
 
 
 @app.get("/admin/roles", response_class=HTMLResponse)
@@ -600,7 +605,7 @@ async def admin_roles(request: Request):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # TODO: Récupérer la liste des rôles depuis l'API
-    return templates.TemplateResponse("admin-roles.html", {"request": request, "user": user, "roles": []})
+    return render_template("admin-roles.html", {"request": request, "user": user, "roles": []})
 
 
 @app.get("/admin/stats", response_class=HTMLResponse)
@@ -613,7 +618,7 @@ async def admin_stats(request: Request):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # TODO: Récupérer les statistiques depuis l'API
-    return templates.TemplateResponse("admin-stats.html", {"request": request, "user": user, "stats": {}})
+    return render_template("admin-stats.html", {"request": request, "user": user, "stats": {}})
 
 
 @app.get("/admin/logs", response_class=HTMLResponse)
@@ -626,7 +631,7 @@ async def admin_logs(request: Request):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # TODO: Récupérer les logs depuis l'API
-    return templates.TemplateResponse("admin-logs.html", {"request": request, "user": user, "logs": []})
+    return render_template("admin-logs.html", {"request": request, "user": user, "logs": []})
 
 
 @app.get("/admin/settings", response_class=HTMLResponse)
@@ -639,12 +644,12 @@ async def admin_settings(request: Request):
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # TODO: Récupérer les paramètres système depuis l'API
-    return templates.TemplateResponse("admin-settings.html", {"request": request, "user": user, "settings": {}})
+    return render_template("admin-settings.html", {"request": request, "user": user, "settings": {}})
 
 
 @app.get("/forgot-password", response_class=HTMLResponse)
 def forgot_password_page(request: Request):
-    return templates.TemplateResponse("forgot-password.html", {"request": request, "error": None, "success": None})
+    return render_template("forgot-password.html", {"request": request, "error": None, "success": None})
 
 
 @app.post("/forgot-password")
@@ -652,19 +657,19 @@ async def forgot_password(request: Request, email: EmailStr = Form(...)):
     try:
         r = await client.post(f"{AUTH_SERVICE_URL}/auth/request-password-reset", json={"email": email})
         if r.status_code == 200:
-            return templates.TemplateResponse("forgot-password.html", {
+            return render_template("forgot-password.html", {
                 "request": request, 
                 "error": None, 
                 "success": "Si cette adresse email existe, un lien de réinitialisation a été envoyé."
             })
         else:
-            return templates.TemplateResponse("forgot-password.html", {
+            return render_template("forgot-password.html", {
                 "request": request, 
                 "error": "Erreur lors de l'envoi de l'email", 
                 "success": None
             })
     except httpx.HTTPError:
-        return templates.TemplateResponse("forgot-password.html", {
+        return render_template("forgot-password.html", {
             "request": request, 
             "error": "Service auth indisponible", 
             "success": None
@@ -675,13 +680,13 @@ async def forgot_password(request: Request, email: EmailStr = Form(...)):
 def reset_password_page(request: Request, token: str = None):
     if not token:
         return RedirectResponse(url="/forgot-password", status_code=303)
-    return templates.TemplateResponse("reset-password.html", {"request": request, "token": token, "error": None})
+    return render_template("reset-password.html", {"request": request, "token": token, "error": None})
 
 
 @app.post("/reset-password")
 async def reset_password(request: Request, token: str = Form(...), password: str = Form(...), confirm_password: str = Form(...)):
     if password != confirm_password:
-        return templates.TemplateResponse("reset-password.html", {
+        return render_template("reset-password.html", {
             "request": request, 
             "token": token, 
             "error": "Les mots de passe ne correspondent pas"
@@ -695,13 +700,13 @@ async def reset_password(request: Request, token: str = Form(...), password: str
         if r.status_code == 200:
             return RedirectResponse(url="/login?reset=success", status_code=303)
         else:
-            return templates.TemplateResponse("reset-password.html", {
+            return render_template("reset-password.html", {
                 "request": request, 
                 "token": token, 
                 "error": "Token invalide ou expiré"
             })
     except httpx.HTTPError:
-        return templates.TemplateResponse("reset-password.html", {
+        return render_template("reset-password.html", {
             "request": request, 
             "token": token, 
             "error": "Service auth indisponible"
@@ -714,7 +719,7 @@ async def account_page(request: Request):
     if isinstance(auth, RedirectResponse):
         return auth
     _token, user = auth
-    return templates.TemplateResponse("account.html", {"request": request, "user": user, "error": None, "success": None})
+    return render_template("account.html", {"request": request, "user": user, "error": None, "success": None})
 
 
 @app.post("/account")
@@ -730,7 +735,7 @@ async def update_account(request: Request, first_name: str = Form(None), last_na
         r = await client.get(f"{AUTH_SERVICE_URL}/me", headers={"Authorization": f"Bearer {token}"})
         if r.status_code == 200:
             user = r.json()
-            return templates.TemplateResponse("account.html", {
+            return render_template("account.html", {
                 "request": request, 
                 "user": user, 
                 "error": None, 
@@ -739,7 +744,7 @@ async def update_account(request: Request, first_name: str = Form(None), last_na
         else:
             return login_redirect(next_path=request.url.path)
     except httpx.HTTPError:
-        return templates.TemplateResponse("account.html", {
+        return render_template("account.html", {
             "request": request, 
             "user": {"email": "user@example.com"}, 
             "error": "Erreur lors de la mise à jour", 
@@ -754,7 +759,7 @@ async def change_password_page(request: Request):
         return auth
     _token, user = auth
 
-    return templates.TemplateResponse("change-password.html", {"request": request, "user": user, "error": None, "success": None})
+    return render_template("change-password.html", {"request": request, "user": user, "error": None, "success": None})
 
 
 @app.post("/change-password")
@@ -765,7 +770,7 @@ async def change_password(request: Request, current_password: str = Form(...), n
     _token, user = auth
     
     if new_password != confirm_password:
-        return templates.TemplateResponse("change-password.html", {
+        return render_template("change-password.html", {
             "request": request, 
             "user": user,
             "error": "Les mots de passe ne correspondent pas", 
@@ -774,7 +779,7 @@ async def change_password(request: Request, current_password: str = Form(...), n
     
     # TODO: Implémenter le changement de mot de passe côté API
     # Pour l'instant, on simule un succès
-    return templates.TemplateResponse("change-password.html", {
+    return render_template("change-password.html", {
         "request": request, 
         "user": user,
         "error": None, 
@@ -788,7 +793,7 @@ async def settings_page(request: Request):
     if isinstance(auth, RedirectResponse):
         return auth
     _token, user = auth
-    return templates.TemplateResponse("settings.html", {"request": request, "user": user, "error": None, "success": None})
+    return render_template("settings.html", {"request": request, "user": user, "error": None, "success": None})
 
 
 @app.post("/settings")
@@ -806,7 +811,7 @@ async def update_settings(request: Request, theme: str = Form("auto"), language:
             user = r.json()
             # Simuler la mise à jour
             user["theme_preference"] = theme
-            return templates.TemplateResponse("settings.html", {
+            return render_template("settings.html", {
                 "request": request, 
                 "user": user, 
                 "error": None, 
@@ -815,7 +820,7 @@ async def update_settings(request: Request, theme: str = Form("auto"), language:
         else:
             return login_redirect(next_path=request.url.path)
     except httpx.HTTPError:
-        return templates.TemplateResponse("settings.html", {
+        return render_template("settings.html", {
             "request": request, 
             "user": {"email": "user@example.com", "theme_preference": theme}, 
             "error": "Erreur lors de la sauvegarde", 
